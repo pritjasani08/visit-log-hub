@@ -1,33 +1,56 @@
 import { useState, useEffect } from 'react';
-import { QrCode, Calendar, ClipboardCheck, MapPin, Clock, Users } from 'lucide-react';
+import { 
+  Calendar, 
+  Users, 
+  TrendingUp, 
+  Clock,
+  QrCode,
+  MapPin,
+  Star,
+  User,
+  LogOut,
+  Settings
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import { useEventStore } from '@/stores/eventStore';
 import { useAuthStore } from '@/stores/authStore';
-import { Event } from '@/types';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuLabel, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const StudentHome = () => {
   const navigate = useNavigate();
-  const { events, loadEvents } = useEventStore();
-  const { user } = useAuthStore();
-  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
-  const [pendingFeedback, setPendingFeedback] = useState(2); // Mock data
+  const { events, loadEvents, analytics, loadAnalytics } = useEventStore();
+  const { user, logout } = useAuthStore();
+  const [activeEvents, setActiveEvents] = useState(0);
 
   useEffect(() => {
     loadEvents();
-  }, [loadEvents]);
+    loadAnalytics('1'); // Load demo analytics
+  }, [loadEvents, loadAnalytics]);
 
   useEffect(() => {
     const now = new Date();
-    const upcoming = events.filter(event => new Date(event.startTime) > now);
-    setUpcomingEvents(upcoming);
+    const active = events.filter(event => {
+      const start = new Date(event.startTime);
+      const end = new Date(event.endTime);
+      return now >= start && now <= end;
+    }).length;
+    setActiveEvents(active);
   }, [events]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
-      weekday: 'short',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
@@ -35,19 +58,50 @@ const StudentHome = () => {
     });
   };
 
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const handleLogout = () => {
+    logout();
+    navigate('/');
   };
 
-  const isEventLive = (event: Event) => {
-    const now = new Date();
-    const start = new Date(event.startTime);
-    const end = new Date(event.endTime);
-    return now >= start && now <= end;
+  const handleEditProfile = () => {
+    // Navigate to edit profile page (to be implemented)
+    navigate('/student/profile');
   };
+
+  const stats = [
+    {
+      title: 'Events Attended',
+      value: events.filter(e => e.attendanceCount && e.attendanceCount > 0).length,
+      icon: Calendar,
+      color: 'text-primary',
+      bg: 'bg-primary/10',
+    },
+    {
+      title: 'Active Sessions',
+      value: activeEvents,
+      icon: Clock,
+      color: 'text-secondary',
+      bg: 'bg-secondary/10',
+    },
+    {
+      title: 'Total Attendance',
+      value: events.reduce((sum, e) => sum + (e.attendanceCount || 0), 0),
+      icon: Users,
+      color: 'text-indigo-600',
+      bg: 'bg-indigo-100',
+    },
+    {
+      title: 'Avg Rating Given',
+      value: '4.2',
+      icon: Star,
+      color: 'text-yellow-600',
+      bg: 'bg-yellow-100',
+    },
+  ];
+
+  const attendanceData = analytics?.attendanceOverTime || [];
+  const ratingsData = analytics?.ratingsDistribution || [];
+  const pieColors = ['#8B5CF6', '#06B6D4', '#10B981', '#F59E0B', '#EF4444'];
 
   return (
     <div className="min-h-screen bg-gradient-surface">
@@ -57,138 +111,221 @@ const StudentHome = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold">
-                Welcome back, {user?.firstName}!
+                Student Dashboard
               </h1>
               <p className="text-primary-foreground/80 mt-1">
-                Ready to attend your next session?
+                Welcome back, {user?.firstName}! Here's your activity overview.
               </p>
             </div>
-            <div className="hidden md:flex items-center gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold">5</div>
-                <div className="text-sm text-primary-foreground/80">Events Attended</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold">4.2</div>
-                <div className="text-sm text-primary-foreground/80">Avg Rating Given</div>
-              </div>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src="/avatars/01.png" alt={user?.firstName} />
+                    <AvatarFallback>{user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{user?.firstName} {user?.lastName}</p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user?.email}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleEditProfile}>
+                  <User className="mr-2 h-4 w-4" />
+                  <span>Edit Profile</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Log out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card className="group hover:shadow-large transition-all duration-300 border-0 shadow-medium cursor-pointer" onClick={() => navigate('/student/scan')}>
-            <CardContent className="p-6 text-center">
-              <div className="bg-gradient-primary p-4 rounded-2xl w-fit mx-auto mb-4 group-hover:shadow-glow transition-all duration-300">
-                <QrCode className="h-8 w-8 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">Scan QR Code</h3>
-              <p className="text-muted-foreground text-sm">Mark your attendance quickly</p>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {stats.map((stat, index) => {
+            const Icon = stat.icon;
+            return (
+              <Card key={index} className="border-0 shadow-medium hover:shadow-large transition-all duration-300">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
+                      <p className="text-2xl font-bold">{stat.value}</p>
+                    </div>
+                    <div className={`p-3 rounded-full ${stat.bg}`}>
+                      <Icon className={`h-6 w-6 ${stat.color}`} />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Attendance Trend */}
+          <Card className="border-0 shadow-medium">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Attendance Trend
+              </CardTitle>
+              <CardDescription>Your attendance over the past week</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={attendanceData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
+                  <YAxis stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                    }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="count" 
+                    stroke="hsl(var(--primary))" 
+                    strokeWidth={3}
+                    dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
 
-          <Card className="group hover:shadow-large transition-all duration-300 border-0 shadow-medium cursor-pointer" onClick={() => navigate('/student/events')}>
-            <CardContent className="p-6 text-center">
-              <div className="bg-gradient-secondary p-4 rounded-2xl w-fit mx-auto mb-4 group-hover:shadow-glow transition-all duration-300">
-                <Calendar className="h-8 w-8 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">My Events</h3>
-              <p className="text-muted-foreground text-sm">View all your sessions</p>
-            </CardContent>
-          </Card>
-
-          <Card className="group hover:shadow-large transition-all duration-300 border-0 shadow-medium cursor-pointer" onClick={() => navigate('/student/attendance')}>
-            <CardContent className="p-6 text-center relative">
-              <div className="bg-gradient-to-br from-indigo-500 to-purple-500 p-4 rounded-2xl w-fit mx-auto mb-4 group-hover:shadow-glow transition-all duration-300">
-                <ClipboardCheck className="h-8 w-8 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">My Attendance</h3>
-              <p className="text-muted-foreground text-sm">View attendance history</p>
+          {/* Ratings Distribution */}
+          <Card className="border-0 shadow-medium">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Star className="h-5 w-5" />
+                Ratings Given
+              </CardTitle>
+              <CardDescription>Distribution of your feedback ratings</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={ratingsData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ rating, count }) => `${rating}★ (${count})`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="count"
+                  >
+                    {ratingsData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
         </div>
 
-        {/* Upcoming Events */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold">Upcoming Events</h2>
-            <Button variant="outline" onClick={() => navigate('/student/events')}>
-              View All
-            </Button>
-          </div>
-
-          {upcomingEvents.length === 0 ? (
-            <Card className="border-0 shadow-medium">
-              <CardContent className="p-8 text-center">
-                <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No upcoming events</h3>
-                <p className="text-muted-foreground">Check back later for new sessions</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4">
-              {upcomingEvents.slice(0, 3).map((event) => (
-                <Card key={event.id} className="border-0 shadow-medium hover:shadow-large transition-all duration-300">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-semibold">{event.title}</h3>
-                          {isEventLive(event) && (
-                            <Badge className="bg-destructive text-destructive-foreground animate-pulse">
-                              LIVE
-                            </Badge>
-                          )}
-                        </div>
-                        
-                        <p className="text-muted-foreground mb-4">{event.description}</p>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                            <div>
-                              <div className="font-medium">{formatTime(event.startTime)}</div>
-                              <div className="text-muted-foreground">{formatDate(event.startTime)}</div>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4 text-muted-foreground" />
-                            <div>
-                              <div className="font-medium">{event.companyName}</div>
-                              <div className="text-muted-foreground">Location required</div>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4 text-muted-foreground" />
-                            <div>
-                              <div className="font-medium">{event.attendanceCount || 0} attending</div>
-                              <div className="text-muted-foreground">Registered students</div>
-                            </div>
-                          </div>
-                        </div>
+        {/* Recent Events */}
+        <Card className="border-0 shadow-medium">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Recent Events</CardTitle>
+                <CardDescription>Your latest event activities and sessions</CardDescription>
+              </div>
+              <Button variant="outline" onClick={() => navigate('/student/events')}>
+                View All
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {events.slice(0, 5).map((event) => {
+                const isLive = new Date() >= new Date(event.startTime) && new Date() <= new Date(event.endTime);
+                const isUpcoming = new Date() < new Date(event.startTime);
+                const hasAttended = event.attendanceCount && event.attendanceCount > 0;
+                
+                return (
+                  <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+                    <div className="flex items-start gap-4">
+                      <div className="flex items-center gap-2">
+                        {isLive ? (
+                          <Badge className="bg-destructive text-destructive-foreground animate-pulse">LIVE</Badge>
+                        ) : isUpcoming ? (
+                          <Badge variant="secondary">Upcoming</Badge>
+                        ) : hasAttended ? (
+                          <Badge className="bg-secondary text-secondary-foreground">Attended</Badge>
+                        ) : (
+                          <Badge variant="outline">Missed</Badge>
+                        )}
                       </div>
                       
-                      {isEventLive(event) && (
-                        <Button 
+                      <div className="flex-1">
+                        <h4 className="font-semibold">{event.title}</h4>
+                        <p className="text-sm text-muted-foreground mb-2">{event.companyName}</p>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {formatDate(event.startTime)}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {event.radiusMeters}m radius
+                          </span>
+                          {hasAttended && (
+                            <span className="flex items-center gap-1">
+                              <Star className="h-3 w-3" />
+                              {event.averageRating?.toFixed(1) || 'N/A'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      {isLive && (
+                        <Button
+                          size="sm"
                           onClick={() => navigate('/student/scan')}
-                          className="bg-gradient-primary hover:opacity-90 transition-opacity ml-4"
+                          className="bg-gradient-primary hover:opacity-90"
                         >
                           <QrCode className="h-4 w-4 mr-2" />
                           Scan QR
                         </Button>
                       )}
+                      {hasAttended && !isUpcoming && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/student/feedback/${event.id}`)}
+                        >
+                          Give Feedback
+                        </Button>
+                      )}
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  </div>
+                );
+              })}
             </div>
-          )}
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

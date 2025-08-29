@@ -5,10 +5,11 @@ import {
   TrendingUp, 
   Clock,
   QrCode,
-  Plus,
   BarChart3,
   MapPin,
-  Star
+  Star,
+  User,
+  LogOut
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,11 +18,20 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useNavigate } from 'react-router-dom';
 import { useEventStore } from '@/stores/eventStore';
 import { useAuthStore } from '@/stores/authStore';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuLabel, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { events, loadEvents, analytics, loadAnalytics } = useEventStore();
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const [activeEvents, setActiveEvents] = useState(0);
 
   useEffect(() => {
@@ -46,6 +56,16 @@ const AdminDashboard = () => {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
+  const handleEditProfile = () => {
+    // Navigate to edit profile page (to be implemented)
+    navigate('/admin/profile');
   };
 
   const stats = [
@@ -97,13 +117,44 @@ const AdminDashboard = () => {
                 Welcome back, {user?.firstName}! Here's your event overview.
               </p>
             </div>
-            <Button 
-              onClick={() => navigate('/admin/events/new')}
-              className="bg-white text-primary hover:bg-white/90 transition-colors"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Create Event
-            </Button>
+            <div className="flex items-center gap-4">
+              <Button 
+                onClick={() => navigate('/admin/events/new')}
+                className="bg-white text-primary hover:bg-white/90 transition-colors"
+              >
+                <QrCode className="h-4 w-4 mr-2" />
+                Create Event
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src="/avatars/01.png" alt={user?.firstName} />
+                      <AvatarFallback>{user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user?.firstName} {user?.lastName}</p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user?.email}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleEditProfile}>
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Edit Profile</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
       </div>
