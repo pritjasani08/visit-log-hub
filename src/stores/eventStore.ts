@@ -1,0 +1,233 @@
+import { create } from 'zustand';
+import { Event, Attendance, Feedback, AnalyticsData } from '@/types';
+
+interface EventStore {
+  events: Event[];
+  currentEvent: Event | null;
+  attendances: Attendance[];
+  feedbacks: Feedback[];
+  qrToken: string | null;
+  qrExpiry: Date | null;
+  analytics: AnalyticsData | null;
+
+  // Actions
+  loadEvents: () => Promise<void>;
+  createEvent: (event: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Event>;
+  updateEvent: (id: string, updates: Partial<Event>) => Promise<Event>;
+  deleteEvent: (id: string) => Promise<void>;
+  setCurrentEvent: (event: Event | null) => void;
+  generateQR: (eventId: string) => Promise<{ token: string; expiry: Date }>;
+  rotateQR: (eventId: string) => Promise<{ token: string; expiry: Date }>;
+  checkIn: (qrToken: string, gpsLat: number, gpsLng: number) => Promise<boolean>;
+  submitFeedback: (feedback: Omit<Feedback, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<boolean>;
+  loadAnalytics: (eventId: string) => Promise<void>;
+}
+
+// Mock data
+const mockEvents: Event[] = [
+  {
+    id: '1',
+    title: 'Tech Innovation Workshop',
+    description: 'Hands-on workshop on emerging technologies and innovation methodologies',
+    companyName: 'TechCorp Solutions',
+    locationLat: 40.7128,
+    locationLng: -74.0060,
+    radiusMeters: 100,
+    startTime: new Date(Date.now() + 1000 * 60 * 30).toISOString(), // 30 minutes from now
+    endTime: new Date(Date.now() + 1000 * 60 * 60 * 3).toISOString(), // 3 hours from now
+    createdById: '1',
+    qrNonce: 'nonce-123',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    attendanceCount: 24,
+    feedbackCount: 18,
+    averageRating: 4.2,
+  },
+  {
+    id: '2',
+    title: 'Manufacturing Plant Visit',
+    description: 'Industrial visit to state-of-the-art manufacturing facility',
+    companyName: 'Industrial Dynamics Inc.',
+    locationLat: 40.7580,
+    locationLng: -73.9855,
+    radiusMeters: 150,
+    startTime: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(), // Tomorrow
+    endTime: new Date(Date.now() + 1000 * 60 * 60 * 28).toISOString(), // Tomorrow + 4 hours
+    createdById: '1',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    attendanceCount: 0,
+    feedbackCount: 0,
+    averageRating: 0,
+  },
+];
+
+const mockAttendances: Attendance[] = [
+  {
+    id: '1',
+    userId: '2',
+    eventId: '1',
+    checkInAt: new Date().toISOString(),
+    gpsLat: 40.7128,
+    gpsLng: -74.0060,
+    gpsAccuracy: 10,
+    isValidGPS: true,
+  },
+];
+
+const mockFeedbacks: Feedback[] = [
+  {
+    id: '1',
+    userId: '2',
+    eventId: '1',
+    starsContent: 5,
+    starsDelivery: 4,
+    starsRelevance: 5,
+    recommend: true,
+    shortAnswer: 'Great workshop!',
+    longAnswer: 'The workshop was incredibly informative and well-structured. I learned a lot about modern tech innovations.',
+    sentiment: 0.8,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
+export const useEventStore = create<EventStore>((set, get) => ({
+  events: [],
+  currentEvent: null,
+  attendances: [],
+  feedbacks: [],
+  qrToken: null,
+  qrExpiry: null,
+  analytics: null,
+
+  loadEvents: async () => {
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 500));
+    set({ events: mockEvents });
+  },
+
+  createEvent: async (eventData) => {
+    const newEvent: Event = {
+      ...eventData,
+      id: Math.random().toString(36).substr(2, 9),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      attendanceCount: 0,
+      feedbackCount: 0,
+      averageRating: 0,
+    };
+    
+    set(state => ({
+      events: [...state.events, newEvent]
+    }));
+    
+    return newEvent;
+  },
+
+  updateEvent: async (id, updates) => {
+    const updatedEvent = { ...get().events.find(e => e.id === id)!, ...updates, updatedAt: new Date().toISOString() };
+    
+    set(state => ({
+      events: state.events.map(e => e.id === id ? updatedEvent : e)
+    }));
+    
+    return updatedEvent;
+  },
+
+  deleteEvent: async (id) => {
+    set(state => ({
+      events: state.events.filter(e => e.id !== id)
+    }));
+  },
+
+  setCurrentEvent: (event) => {
+    set({ currentEvent: event });
+  },
+
+  generateQR: async (eventId) => {
+    const token = `qr-${eventId}-${Date.now()}`;
+    const expiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    
+    set({ qrToken: token, qrExpiry: expiry });
+    
+    return { token, expiry };
+  },
+
+  rotateQR: async (eventId) => {
+    return get().generateQR(eventId);
+  },
+
+  checkIn: async (qrToken, gpsLat, gpsLng) => {
+    // Mock validation
+    const isValid = Math.random() > 0.1; // 90% success rate
+    
+    if (isValid) {
+      const newAttendance: Attendance = {
+        id: Math.random().toString(36).substr(2, 9),
+        userId: '2', // Current user
+        eventId: '1', // Extract from QR token
+        checkInAt: new Date().toISOString(),
+        gpsLat,
+        gpsLng,
+        gpsAccuracy: 10,
+        isValidGPS: true,
+      };
+      
+      set(state => ({
+        attendances: [...state.attendances, newAttendance]
+      }));
+    }
+    
+    return isValid;
+  },
+
+  submitFeedback: async (feedbackData) => {
+    const newFeedback: Feedback = {
+      ...feedbackData,
+      id: Math.random().toString(36).substr(2, 9),
+      userId: '2', // Current user
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    
+    set(state => ({
+      feedbacks: [...state.feedbacks, newFeedback]
+    }));
+    
+    return true;
+  },
+
+  loadAnalytics: async (eventId) => {
+    // Mock analytics data
+    const analytics: AnalyticsData = {
+      totalEvents: 5,
+      activeSessions: 1,
+      attendanceRate: 0.85,
+      averageRating: 4.2,
+      attendanceOverTime: [
+        { date: '2024-01-01', count: 15 },
+        { date: '2024-01-02', count: 23 },
+        { date: '2024-01-03', count: 18 },
+        { date: '2024-01-04', count: 31 },
+        { date: '2024-01-05', count: 27 },
+      ],
+      ratingsDistribution: [
+        { rating: 1, count: 2 },
+        { rating: 2, count: 3 },
+        { rating: 3, count: 8 },
+        { rating: 4, count: 15 },
+        { rating: 5, count: 22 },
+      ],
+      topKeywords: [
+        { word: 'informative', count: 15 },
+        { word: 'engaging', count: 12 },
+        { word: 'practical', count: 10 },
+        { word: 'useful', count: 8 },
+        { word: 'relevant', count: 7 },
+      ],
+    };
+    
+    set({ analytics });
+  },
+}));
