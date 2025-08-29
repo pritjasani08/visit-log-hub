@@ -19,6 +19,7 @@ import AdminDashboard from "@/components/admin/AdminDashboard";
 import QRGenerator from "@/components/admin/QRGenerator";
 import EventCreator from "@/components/admin/EventCreator";
 import EventDetails from "@/components/admin/EventDetails";
+import CompanyDashboard from "@/components/company/CompanyDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -151,12 +152,7 @@ const App = () => {
               path="/company" 
               element={
                 <ProtectedRoute allowedRoles={['COMPANY_VIEWER']}>
-                  <div className="min-h-screen bg-gradient-surface flex items-center justify-center">
-                    <div className="text-center">
-                      <h1 className="text-3xl font-bold mb-4">Company Dashboard</h1>
-                      <p className="text-muted-foreground">Coming soon - View analytics and feedback</p>
-                    </div>
-                  </div>
+                  <CompanyDashboard />
                 </ProtectedRoute>
               } 
             />
