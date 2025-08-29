@@ -22,7 +22,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login, selectedRole } = useAuthStore();
+  const { login, selectedRole, clearStorage } = useAuthStore();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -49,7 +49,7 @@ const LoginForm = () => {
           navigate('/student');
         } else if (selectedRole === 'ADMIN') {
           navigate('/admin');
-        } else if (selectedRole === 'COMPANY_VIEWER') {
+        } else if (selectedRole === 'COMPANY') {
           navigate('/company');
         }
       } else {
@@ -73,7 +73,7 @@ const LoginForm = () => {
   const demoCredentials = {
     STUDENT: { email: 'student@intrack.app', password: 'Student@123' },
     ADMIN: { email: 'admin@intrack.app', password: 'Admin@123' },
-    COMPANY_VIEWER: { email: 'company@intrack.app', password: 'Company@123' },
+    COMPANY: { email: 'company@intrack.app', password: 'Company@123' },
   };
 
   const roleCredentials = selectedRole ? demoCredentials[selectedRole] : null;
@@ -98,17 +98,34 @@ const LoginForm = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {roleCredentials && (
-              <div className="mb-6 p-4 bg-accent rounded-lg">
-                <p className="text-sm font-medium text-accent-foreground mb-2">Demo Credentials:</p>
-                <div className="space-y-1 text-xs text-muted-foreground">
-                  <div>Email: {roleCredentials.email}</div>
-                  <div>Password: {roleCredentials.password}</div>
-                </div>
-              </div>
-            )}
+                         {roleCredentials && (
+               <div className="mb-6 p-4 bg-accent rounded-lg">
+                 <p className="text-sm font-medium text-accent-foreground mb-2">Demo Credentials:</p>
+                 <div className="space-y-1 text-xs text-muted-foreground">
+                   <div>Email: {roleCredentials.email}</div>
+                   <div>Password: {roleCredentials.password}</div>
+                 </div>
+                 <p className="text-xs text-muted-foreground mt-2 italic">
+                   Note: Password must contain the role name (e.g., "Student", "Admin", "Company")
+                 </p>
+               </div>
+             )}
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+               <Button
+                 type="button"
+                 variant="outline"
+                 onClick={() => {
+                   clearStorage();
+                   toast({
+                     title: 'Storage cleared',
+                     description: 'Please try logging in again.',
+                   });
+                 }}
+                 className="w-full mb-4"
+               >
+                 Clear Storage & Retry
+               </Button>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input

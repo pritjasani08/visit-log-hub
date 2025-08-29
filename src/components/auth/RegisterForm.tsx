@@ -20,7 +20,7 @@ const registerSchema = z.object({
   email: z.string().email('Please enter a valid email'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
-  role: z.enum(['STUDENT', 'ADMIN', 'COMPANY_VIEWER']),
+  role: z.enum(['STUDENT', 'ADMIN', 'COMPANY']),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ['confirmPassword'],
@@ -70,7 +70,7 @@ const RegisterForm = () => {
           navigate('/student');
         } else if (data.role === 'ADMIN') {
           navigate('/admin');
-        } else if (data.role === 'COMPANY_VIEWER') {
+        } else if (data.role === 'COMPANY') {
           navigate('/company');
         }
       } else {
@@ -166,7 +166,7 @@ const RegisterForm = () => {
                   <SelectContent>
                     <SelectItem value="STUDENT">Student</SelectItem>
                     <SelectItem value="ADMIN">Admin</SelectItem>
-                    <SelectItem value="COMPANY_VIEWER">Company Viewer</SelectItem>
+                    <SelectItem value="COMPANY">Company</SelectItem>
                   </SelectContent>
                 </Select>
                 {errors.role && (
@@ -198,6 +198,9 @@ const RegisterForm = () => {
                     )}
                   </Button>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Password must contain your role name (e.g., "Student", "Admin", "Company")
+                </p>
                 {errors.password && (
                   <p className="text-sm text-destructive">{errors.password.message}</p>
                 )}

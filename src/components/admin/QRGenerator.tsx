@@ -7,20 +7,20 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { useEventStore } from '@/stores/eventStore';
+import { useVisitStore } from '@/stores/eventStore';
 
 const QRGenerator = () => {
   const { eventId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { events, qrToken, qrExpiry, generateQR, rotateQR } = useEventStore();
+  const { visits, qrToken, qrExpiry, generateQR, rotateQR } = useVisitStore();
   const [qrImageUrl, setQrImageUrl] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [timeLeft, setTimeLeft] = useState<string>('');
   const [attendanceCount, setAttendanceCount] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const event = events.find(e => e.id === eventId);
+  const visit = visits.find(v => v.id === eventId);
 
   useEffect(() => {
     if (eventId && !qrToken) {
@@ -103,9 +103,15 @@ const QRGenerator = () => {
   const generateQRImage = async (token: string) => {
     try {
       const qrData = JSON.stringify({
-        eventId,
+        visitId: eventId,
+        studentId: visit?.studentId,
+        studentName: `${visit?.studentId ? 'Student' : 'Unknown'}`, // We'll get actual student name from store
+        companyName: visit?.companyName,
+        visitDate: visit?.visitDate,
+        purpose: visit?.purpose,
         token,
         timestamp: Date.now(),
+        uniqueId: `${eventId}-${Date.now()}`,
       });
 
       const url = await QRCode.toDataURL(qrData, {
@@ -135,7 +141,7 @@ const QRGenerator = () => {
   const downloadQR = () => {
     if (canvasRef.current) {
       const link = document.createElement('a');
-      link.download = `qr-${event?.title || 'event'}-${Date.now()}.jpg`;
+      link.download = `qr-${visit?.companyName || 'visit'}-${Date.now()}.jpg`;
       link.href = canvasRef.current.toDataURL('image/jpeg', 0.95);
       link.click();
     }
@@ -149,9 +155,9 @@ const QRGenerator = () => {
     const margin = 40;
     const qrSize = pageWidth - margin * 2;
     pdf.setFontSize(18);
-    pdf.text(event?.title || 'Event QR', margin, 40);
+    pdf.text(visit?.companyName || 'Visit QR', margin, 40);
     pdf.addImage(imgData, 'PNG', margin, 60, qrSize, qrSize);
-    pdf.save(`qr-${event?.title || 'event'}.pdf`);
+    pdf.save(`qr-${visit?.companyName || 'visit'}.pdf`);
   };
 
   const copySessionCode = () => {
@@ -167,14 +173,14 @@ const QRGenerator = () => {
     setIsFullscreen(!isFullscreen);
   };
 
-  if (!event) {
+  if (!visit) {
     return (
       <div className="min-h-screen bg-gradient-surface flex items-center justify-center">
         <Card className="w-96 border-0 shadow-large">
           <CardContent className="p-8 text-center">
-            <h3 className="text-lg font-semibold mb-2">Event not found</h3>
-            <p className="text-muted-foreground mb-4">The requested event does not exist.</p>
-            <Button onClick={() => navigate('/admin')}>
+            <h3 className="text-lg font-semibold mb-2">Visit not found</h3>
+            <p className="text-muted-foreground mb-4">The requested visit does not exist.</p>
+            <Button onClick={() => navigate('/student')}>
               Back to Dashboard
             </Button>
           </CardContent>
@@ -193,8 +199,8 @@ const QRGenerator = () => {
         </div>
         
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">{event.title}</h1>
-          <p className="text-xl text-muted-foreground">{event.companyName}</p>
+          <h1 className="text-3xl font-bold mb-2">{visit.companyName}</h1>
+          <p className="text-xl text-muted-foreground">{visit.purpose}</p>
         </div>
 
         {qrImageUrl && (
@@ -235,7 +241,7 @@ const QRGenerator = () => {
           </Button>
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">QR Session</h1>
-            <p className="text-muted-foreground">{event.title}</p>
+            <p className="text-muted-foreground">{visit.companyName}</p>
           </div>
         </div>
 
@@ -349,25 +355,25 @@ const QRGenerator = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <h4 className="font-semibold">{event.title}</h4>
-                  <p className="text-sm text-muted-foreground">{event.description}</p>
+                  <h4 className="font-semibold">{visit.companyName}</h4>
+                  <p className="text-sm text-muted-foreground">{visit.purpose}</p>
                 </div>
                 
                 <div>
-                  <h5 className="font-medium text-sm">Company</h5>
-                  <p className="text-sm text-muted-foreground">{event.companyName}</p>
+                  <h5 className="font-medium text-sm">Visit Date</h5>
+                  <p className="text-sm text-muted-foreground">{visit.visitDate}</p>
                 </div>
                 
                 <div>
                   <h5 className="font-medium text-sm">Time</h5>
                   <p className="text-sm text-muted-foreground">
-                    {new Date(event.startTime).toLocaleString()} - {new Date(event.endTime).toLocaleTimeString()}
+                    {new Date(visit.startTime).toLocaleTimeString()} - {new Date(visit.endTime).toLocaleTimeString()}
                   </p>
                 </div>
                 
                 <div>
-                  <h5 className="font-medium text-sm">Location Radius</h5>
-                  <p className="text-sm text-muted-foreground">{event.radiusMeters}m</p>
+                  <h5 className="font-medium text-sm">Student ID</h5>
+                  <p className="text-sm text-muted-foreground">{visit.studentId}</p>
                 </div>
               </CardContent>
             </Card>
@@ -407,18 +413,11 @@ const QRGenerator = () => {
               </CardHeader>
               <CardContent className="space-y-3">
                 <Button
-                  onClick={() => navigate(`/admin/events/${eventId}`)}
+                  onClick={() => navigate(`/student/visits/${eventId}`)}
                   variant="outline"
                   className="w-full"
                 >
-                  View Event Details
-                </Button>
-                <Button
-                  onClick={() => navigate(`/admin/analytics/${eventId}`)}
-                  variant="outline"
-                  className="w-full"
-                >
-                  View Analytics
+                  View Visit Details
                 </Button>
                 <Button
                   onClick={rotateQRCode}

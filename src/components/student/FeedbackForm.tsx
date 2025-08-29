@@ -1,35 +1,39 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Star, ArrowLeft, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Star, CheckCircle, MessageSquare, Send } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { useEventStore } from '@/stores/eventStore';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useVisitStore } from '@/stores/eventStore';
+import { useAuthStore } from '@/stores/authStore';
 
 const feedbackSchema = z.object({
-  starsContent: z.number().min(1, 'Please rate the content').max(5),
-  starsDelivery: z.number().min(1, 'Please rate the delivery').max(5),
-  starsRelevance: z.number().min(1, 'Please rate the relevance').max(5),
+  starsContent: z.number().min(1, 'Please rate the content quality'),
+  starsDelivery: z.number().min(1, 'Please rate the delivery'),
+  starsRelevance: z.number().min(1, 'Please rate the relevance'),
   recommend: z.boolean(),
-  shortAnswer: z.string().optional(),
-  longAnswer: z.string().optional(),
+  shortAnswer: z.string().min(10, 'Please provide a brief feedback (at least 10 characters)'),
+  longAnswer: z.string().min(20, 'Please provide detailed feedback (at least 20 characters)'),
 });
 
 type FeedbackFormData = z.infer<typeof feedbackSchema>;
 
 const FeedbackForm = () => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const { submitFeedback, events } = useEventStore();
-  const { toast } = useToast();
+  const { visitId } = useParams<{ visitId: string }>();
   const navigate = useNavigate();
-  const { eventId } = useParams();
+  const { toast } = useToast();
+  const { visits, submitFeedback } = useVisitStore();
+  const { user } = useAuthStore();
+  
+  const [visit, setVisit] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hoveredStar, setHoveredStar] = useState<{ field: string; value: number } | null>(null);
 
   const {
     register,
@@ -43,208 +47,228 @@ const FeedbackForm = () => {
       starsContent: 0,
       starsDelivery: 0,
       starsRelevance: 0,
-      recommend: false,
+      recommend: true,
+      shortAnswer: '',
+      longAnswer: '',
     },
   });
 
   const watchedValues = watch();
 
-  const StarRating = ({ 
-    label, 
-    value, 
-    onChange, 
-    error 
-  }: { 
-    label: string; 
-    value: number; 
-    onChange: (value: number) => void;
-    error?: string;
-  }) => {
-    return (
-      <div className="space-y-2">
-        <Label className="text-sm font-medium">{label}</Label>
-        <div className="flex gap-1">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <button
-              key={star}
-              type="button"
-              onClick={() => onChange(star)}
-              className="transition-colors hover:scale-110 transition-transform"
-            >
-              <Star
-                className={`h-8 w-8 ${
-                  star <= value 
-                    ? 'fill-yellow-400 text-yellow-400' 
-                    : 'text-muted-foreground hover:text-yellow-400'
-                }`}
-              />
-            </button>
-          ))}
-        </div>
-        {error && <p className="text-sm text-destructive">{error}</p>}
-      </div>
-    );
+  useEffect(() => {
+    if (visitId) {
+      const foundVisit = visits.find(v => v.id === visitId);
+      if (foundVisit) {
+        setVisit(foundVisit);
+      } else {
+        // If visit not found, create a mock visit for demo
+        setVisit({
+          id: visitId,
+          companyName: 'Company Name',
+          purpose: 'Industrial Visit Purpose',
+          visitDate: new Date().toISOString().split('T')[0],
+        });
+      }
+    }
+  }, [visitId, visits]);
+
+  const handleStarClick = (field: string, value: number) => {
+    setValue(field as keyof FeedbackFormData, value);
   };
 
+  const renderStarRating = (field: string, value: number, label: string) => (
+    <div className="space-y-2">
+      <Label className="text-sm font-medium">{label}</Label>
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            type="button"
+            onClick={() => handleStarClick(field, star)}
+            onMouseEnter={() => setHoveredStar({ field, value: star })}
+            onMouseLeave={() => setHoveredStar(null)}
+            className="focus:outline-none"
+          >
+            <Star
+              className={`h-6 w-6 transition-colors ${
+                star <= (hoveredStar?.field === field ? hoveredStar.value : value)
+                  ? 'fill-yellow-400 text-yellow-400'
+                  : 'text-gray-300'
+              }`}
+            />
+          </button>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {value > 0 ? `${value} star${value > 1 ? 's' : ''}` : 'Click to rate'}
+      </p>
+    </div>
+  );
+
   const onSubmit = async (data: FeedbackFormData) => {
-    setIsSubmitting(true);
+    if (!visitId) return;
+    
+    setIsLoading(true);
     try {
-      const success = await submitFeedback({
-        eventId: eventId || '1',
+      await submitFeedback({
+        visitId,
         ...data,
       });
 
-      if (success) {
-        setSubmitted(true);
-        toast({
-          title: 'Feedback submitted!',
-          description: 'Thank you for your valuable feedback.',
-        });
-      } else {
-        toast({
-          title: 'Submission failed',
-          description: 'Please try again.',
-          variant: 'destructive',
-        });
-      }
+      toast({
+        title: 'Feedback submitted successfully!',
+        description: 'Thank you for your valuable feedback.',
+      });
+
+      // Navigate back to student dashboard
+      navigate('/student');
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'An unexpected error occurred.',
+        title: 'Error submitting feedback',
+        description: 'Please try again.',
         variant: 'destructive',
       });
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
-  if (submitted) {
+  if (!visit) {
     return (
       <div className="min-h-screen bg-gradient-surface flex items-center justify-center">
-        <Card className="w-full max-w-md border-0 shadow-large">
-          <CardContent className="p-8 text-center">
-            <div className="bg-secondary/10 p-6 rounded-full w-fit mx-auto mb-6">
-              <CheckCircle className="h-12 w-12 text-secondary" />
-            </div>
-            <h3 className="text-xl font-semibold mb-2">Feedback Submitted!</h3>
-            <p className="text-muted-foreground mb-6">
-              Thank you for taking the time to provide your feedback. It helps us improve future sessions.
-            </p>
-            <Button 
-              onClick={() => navigate('/student')}
-              className="bg-gradient-primary hover:opacity-90"
-            >
-              Back to Home
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Loading visit details...</p>
+        </div>
       </div>
     );
   }
 
-  const event = events.find(e => e.id === (eventId || '')) || events[0];
-
   return (
     <div className="min-h-screen bg-gradient-surface">
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <div className="flex items-center gap-4 mb-8">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/student')}
-            className="hover:bg-accent"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Home
-          </Button>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Session Feedback</h1>
-            <p className="text-muted-foreground">Help us improve by sharing your experience</p>
-          </div>
-        </div>
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Button
+          variant="ghost"
+          onClick={() => navigate('/student')}
+          className="mb-6 hover:bg-accent transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Dashboard
+        </Button>
 
-        <Card className="border-0 shadow-large">
-          <CardHeader>
-            <CardTitle>{event?.title || 'Session Feedback'}</CardTitle>
-            <CardDescription>{event?.companyName || ''} - Please rate your experience</CardDescription>
+        <Card className="shadow-large border-0">
+          <CardHeader className="text-center">
+            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle className="h-8 w-8 text-green-600" />
+            </div>
+            <CardTitle className="text-2xl">Attendance Confirmed!</CardTitle>
+            <CardDescription>
+              Please provide feedback about your industrial visit to {visit.companyName}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-              {/* Rating Sections */}
-              <div className="space-y-6">
-                <StarRating
-                  label="Content Quality"
-                  value={watchedValues.starsContent}
-                  onChange={(value) => setValue('starsContent', value)}
-                  error={errors.starsContent?.message}
-                />
-
-                <StarRating
-                  label="Delivery & Presentation"
-                  value={watchedValues.starsDelivery}
-                  onChange={(value) => setValue('starsDelivery', value)}
-                  error={errors.starsDelivery?.message}
-                />
-
-                <StarRating
-                  label="Relevance to Studies"
-                  value={watchedValues.starsRelevance}
-                  onChange={(value) => setValue('starsRelevance', value)}
-                  error={errors.starsRelevance?.message}
-                />
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              {/* Visit Summary */}
+              <div className="bg-accent/50 rounded-lg p-4 space-y-2">
+                <h4 className="font-semibold">Visit Summary</h4>
+                <p className="text-sm text-muted-foreground">
+                  <strong>Company:</strong> {visit.companyName}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  <strong>Date:</strong> {visit.visitDate}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  <strong>Purpose:</strong> {visit.purpose}
+                </p>
               </div>
 
-              {/* Text Feedback */}
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="shortAnswer">What did you like most about this session?</Label>
-                  <Textarea
-                    id="shortAnswer"
-                    placeholder="Share the highlights of your experience..."
-                    {...register('shortAnswer')}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="longAnswer">Suggestions for improvement</Label>
-                  <Textarea
-                    id="longAnswer"
-                    placeholder="How can we make future sessions even better?"
-                    rows={4}
-                    {...register('longAnswer')}
-                  />
+              {/* Star Ratings */}
+              <div className="space-y-6">
+                <h4 className="text-lg font-semibold flex items-center gap-2">
+                  <Star className="h-5 w-5" />
+                  Rate Your Experience
+                </h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {renderStarRating('starsContent', watchedValues.starsContent, 'Content Quality')}
+                  {renderStarRating('starsDelivery', watchedValues.starsDelivery, 'Delivery')}
+                  {renderStarRating('starsRelevance', watchedValues.starsRelevance, 'Relevance')}
                 </div>
               </div>
 
               {/* Recommendation */}
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="recommend"
-                  checked={watchedValues.recommend}
-                  onCheckedChange={(checked) => setValue('recommend', !!checked)}
-                />
-                <Label htmlFor="recommend" className="text-sm font-medium leading-none">
-                  I would recommend this session to other students
-                </Label>
+              <div className="space-y-3">
+                <h4 className="text-lg font-semibold">Would you recommend this visit?</h4>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      value="true"
+                      checked={watchedValues.recommend === true}
+                      onChange={() => setValue('recommend', true)}
+                      className="w-4 h-4 text-primary"
+                    />
+                    <span>Yes, definitely!</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      value="false"
+                      checked={watchedValues.recommend === false}
+                      onChange={() => setValue('recommend', false)}
+                      className="w-4 h-4 text-primary"
+                    />
+                    <span>No, not really</span>
+                  </label>
+                </div>
               </div>
 
-              {/* Submit Button */}
-              <div className="flex gap-3 pt-6">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate('/student')}
-                  className="flex-1"
-                >
-                  Skip for now
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 bg-gradient-primary hover:opacity-90"
-                >
-                  {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
-                </Button>
+              {/* Short Feedback */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Brief Feedback <span className="text-red-500">*</span>
+                </label>
+                <Textarea
+                  placeholder="Share your overall impression in a few words..."
+                  {...register('shortAnswer')}
+                  className={errors.shortAnswer ? 'border-destructive' : ''}
+                  rows={2}
+                />
+                {errors.shortAnswer && (
+                  <p className="text-sm text-destructive">{errors.shortAnswer.message}</p>
+                )}
               </div>
+
+              {/* Detailed Feedback */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Detailed Feedback <span className="text-red-500">*</span>
+                </label>
+                <Textarea
+                  placeholder="Tell us more about your experience, what you learned, and suggestions for improvement..."
+                  {...register('longAnswer')}
+                  className={errors.longAnswer ? 'border-destructive' : ''}
+                  rows={4}
+                />
+                {errors.longAnswer && (
+                  <p className="text-sm text-destructive">{errors.longAnswer.message}</p>
+                )}
+              </div>
+
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-gradient-primary hover:opacity-90 transition-opacity"
+              >
+                {isLoading ? (
+                  'Submitting Feedback...'
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Submit Feedback
+                  </>
+                )}
+              </Button>
             </form>
           </CardContent>
         </Card>

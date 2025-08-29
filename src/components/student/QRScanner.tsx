@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { useEventStore } from '@/stores/eventStore';
+import { useVisitStore } from '@/stores/eventStore';
 import { useNavigate } from 'react-router-dom';
 
 const QRScanner = () => {
@@ -16,7 +16,7 @@ const QRScanner = () => {
   const [manualCode, setManualCode] = useState('');
   const videoRef = useRef<HTMLVideoElement>(null);
   const { toast } = useToast();
-  const { checkIn } = useEventStore();
+  const { checkIn } = useVisitStore();
   const navigate = useNavigate();
 
   const requestGPS = async () => {
@@ -104,11 +104,11 @@ const QRScanner = () => {
         });
         
         // Navigate to feedback form
-        // Try to extract eventId and forward to event-specific feedback
+        // Try to extract visitId and forward to visit-specific feedback
         try {
           const parsed = JSON.parse(qrCode);
-          if (parsed?.eventId) {
-            setTimeout(() => navigate(`/student/feedback/${parsed.eventId}`), 1200);
+          if (parsed?.visitId) {
+            setTimeout(() => navigate(`/student/feedback/${parsed.visitId}`), 1200);
             return;
           }
         } catch {}

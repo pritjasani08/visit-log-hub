@@ -3,24 +3,22 @@ export interface User {
   firstName: string;
   lastName: string;
   email: string;
+  mobileNumber: string;
   role: Role;
   createdAt: string;
 }
 
-export type Role = 'STUDENT' | 'ADMIN' | 'COMPANY_VIEWER';
+export type Role = 'STUDENT' | 'COMPANY' | 'ADMIN';
 
-export interface Event {
+export interface IndustrialVisit {
   id: string;
-  title: string;
-  description?: string;
-  companyName?: string;
-  locationLat: number;
-  locationLng: number;
-  radiusMeters: number;
+  studentId: string;
+  companyName: string;
+  visitDate: string;
+  purpose: string;
   startTime: string;
   endTime: string;
-  createdById: string;
-  qrNonce?: string;
+  qrCode: string;
   createdAt: string;
   updatedAt: string;
   attendanceCount?: number;
@@ -36,22 +34,22 @@ export interface Event {
 
 export interface Attendance {
   id: string;
-  userId: string;
-  eventId: string;
+  visitId: string;
+  studentId: string;
   checkInAt: string;
   gpsLat: number;
   gpsLng: number;
   gpsAccuracy?: number;
   userAgent?: string;
   isValidGPS: boolean;
-  user?: User;
-  event?: Event;
+  student?: User;
+  visit?: IndustrialVisit;
 }
 
 export interface Feedback {
   id: string;
-  userId: string;
-  eventId: string;
+  studentId: string;
+  visitId: string;
   starsContent: number;
   starsDelivery: number;
   starsRelevance: number;
@@ -61,13 +59,13 @@ export interface Feedback {
   sentiment?: number;
   createdAt: string;
   updatedAt: string;
-  user?: User;
-  event?: Event;
+  student?: User;
+  visit?: IndustrialVisit;
   extraResponses?: Record<string, string | boolean>;
 }
 
 export interface QRToken {
-  eventId: string;
+  visitId: string;
   nonce: string;
   exp: number;
   iat: number;
@@ -87,7 +85,7 @@ export interface AttendanceCheckIn {
 }
 
 export interface FeedbackSubmission {
-  eventId: string;
+  visitId: string;
   starsContent: number;
   starsDelivery: number;
   starsRelevance: number;
@@ -97,7 +95,7 @@ export interface FeedbackSubmission {
 }
 
 export interface AnalyticsData {
-  totalEvents: number;
+  totalVisits: number;
   activeSessions: number;
   attendanceRate: number;
   averageRating: number;
@@ -112,5 +110,10 @@ export interface AnalyticsData {
   topKeywords: Array<{
     word: string;
     count: number;
+  }>;
+  sentimentAnalysis: Array<{
+    sentiment: 'positive' | 'neutral' | 'negative';
+    count: number;
+    percentage: number;
   }>;
 }

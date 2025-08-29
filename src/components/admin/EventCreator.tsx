@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { useEventStore } from '@/stores/eventStore';
+import { useVisitStore } from '@/stores/eventStore';
 import { useNavigate } from 'react-router-dom';
 
 const eventSchema = z.object({
@@ -45,7 +45,7 @@ const EventCreator = () => {
   const [newQuestionLabel, setNewQuestionLabel] = useState('');
   const [newQuestionType, setNewQuestionType] = useState<'text' | 'textarea' | 'checkbox'>('text');
   const [newQuestionRequired, setNewQuestionRequired] = useState<'optional' | 'required'>('optional');
-  const { createEvent } = useEventStore();
+  const { createVisit } = useVisitStore();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -70,9 +70,13 @@ const EventCreator = () => {
   const onSubmit = async (data: EventFormData) => {
     setIsSubmitting(true);
     try {
-      const event = await createEvent({
-        ...data,
-        createdById: '1', // Current admin user
+      const event = await createVisit({
+        studentId: '1', // Current admin user
+        companyName: data.companyName,
+        visitDate: new Date(data.startTime).toISOString().split('T')[0],
+        purpose: data.description || data.title,
+        startTime: data.startTime,
+        endTime: data.endTime,
       });
 
       toast({
@@ -94,10 +98,11 @@ const EventCreator = () => {
 
   const onInvalid = () => {
     // Show a concise toast when form is invalid
-    const firstError = Object.values(errors)[0] as any;
+    const firstError = Object.values(errors)[0];
+    const errorMessage = firstError?.message || 'Some required fields are missing or invalid.';
     toast({
       title: 'Please fix the highlighted fields',
-      description: firstError?.message || 'Some required fields are missing or invalid.',
+      description: errorMessage,
       variant: 'destructive',
     });
   };

@@ -1,103 +1,113 @@
 
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { 
-  GraduationCap, 
-  Shield, 
-  Building,
-  QrCode,
-  BarChart3,
-  Users
-} from 'lucide-react';
-import { useAuthStore } from '@/stores/authStore';
 import { useNavigate } from 'react-router-dom';
-import { Role } from '@/types';
+import { Building, GraduationCap, Shield } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuthStore } from '@/stores/authStore';
 
 const RoleGate = () => {
-  const { selectRole } = useAuthStore();
   const navigate = useNavigate();
+  const { setSelectedRole } = useAuthStore();
 
-  const handleRoleSelection = (role: Role) => {
-    selectRole(role);
+  const handleRoleSelect = (role: 'STUDENT' | 'ADMIN' | 'COMPANY') => {
+    setSelectedRole(role);
     navigate('/login');
   };
 
   const roles = [
     {
-      type: 'STUDENT' as Role,
-      title: "I'm a Student",
-      description: 'Scan QR codes for attendance and submit feedback',
+      id: 'STUDENT',
+      title: 'Student',
+      description: 'Create industrial visits and manage your attendance',
       icon: GraduationCap,
-      features: ['QR Code Scanning', 'GPS Verification', 'Feedback Forms'],
-      color: 'from-primary to-primary-glow'
+      color: 'text-blue-600',
+      bg: 'bg-blue-50',
+      features: [
+        'Create industrial visits',
+        'Generate QR codes',
+        'Track attendance',
+        'Submit feedback'
+      ]
     },
     {
-      type: 'ADMIN' as Role,
-      title: "I'm an Admin",
-      description: 'Manage events, generate QR codes, and view analytics',
-      icon: Shield,
-      features: ['Event Management', 'Live QR Sessions', 'Analytics Dashboard'],
-      color: 'from-secondary to-emerald-400'
-    },
-    {
-      type: 'COMPANY_VIEWER' as Role,
-      title: "Company View",
-      description: 'View anonymized feedback and analytics (read-only)',
+      id: 'COMPANY',
+      title: 'Company',
+      description: 'Scan QR codes to mark student attendance',
       icon: Building,
-      features: ['Event Analytics', 'Feedback Reports', 'Performance Metrics'],
-      color: 'from-indigo-500 to-purple-500'
+      color: 'text-green-600',
+      bg: 'bg-green-50',
+      features: [
+        'Scan QR codes',
+        'Mark students present',
+        'View visit details',
+        'Track attendance'
+      ]
+    },
+    {
+      id: 'ADMIN',
+      title: 'Admin',
+      description: 'Monitor analytics and performance metrics',
+      icon: Shield,
+      color: 'text-purple-600',
+      bg: 'bg-purple-50',
+      features: [
+        'View attendance analytics',
+        'Monitor performance',
+        'Sentiment analysis',
+        'Generate reports'
+      ]
     }
   ];
 
   return (
     <div className="min-h-screen bg-gradient-surface flex flex-col items-center justify-center p-4">
-      <div className="max-w-6xl w-full">
+      <div className="w-full max-w-6xl">
         {/* Header */}
         <div className="text-center mb-12">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="bg-gradient-primary p-3 rounded-2xl shadow-glow">
-              <QrCode className="h-8 w-8 text-white" />
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
-              InTrack
-            </h1>
-          </div>
+          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-4">
+            Visit Log Hub
+          </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Smart Attendance & Feedback System for Internship and Industrial Visits
+            Choose your role to access the industrial visit management system
           </p>
         </div>
 
-        {/* Role Selection Cards */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        {/* Role Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {roles.map((role) => {
             const Icon = role.icon;
             return (
               <Card 
-                key={role.type} 
-                className="group hover:shadow-large transition-all duration-300 hover:-translate-y-1 border-0 shadow-medium"
+                key={role.id} 
+                className="border-0 shadow-large hover:shadow-xl transition-all duration-300 cursor-pointer group"
+                onClick={() => handleRoleSelect(role.id as 'STUDENT' | 'ADMIN' | 'COMPANY')}
               >
-                <CardContent className="p-6">
-                  <div className={`bg-gradient-to-br ${role.color} p-4 rounded-2xl w-fit mb-4 group-hover:shadow-glow transition-all duration-300`}>
-                    <Icon className="h-8 w-8 text-white" />
+                <CardHeader className="text-center pb-4">
+                  <div className={`mx-auto w-16 h-16 ${role.bg} rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
+                    <Icon className={`h-8 w-8 ${role.color}`} />
                   </div>
-                  
-                  <h3 className="text-xl font-semibold mb-2">{role.title}</h3>
-                  <p className="text-muted-foreground mb-4 text-sm">{role.description}</p>
-                  
-                  <div className="space-y-2 mb-6">
+                  <CardTitle className="text-2xl">{role.title}</CardTitle>
+                  <CardDescription className="text-base">
+                    {role.description}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2">
                     {role.features.map((feature, index) => (
-                      <div key={index} className="flex items-center gap-2 text-sm">
-                        <div className="w-1 h-1 bg-primary rounded-full" />
-                        <span className="text-muted-foreground">{feature}</span>
-                      </div>
+                      <li key={index} className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
+                        {feature}
+                      </li>
                     ))}
-                  </div>
-                  
+                  </ul>
                   <Button 
-                    onClick={() => handleRoleSelection(role.type)}
-                    className="w-full bg-gradient-to-r from-primary to-primary-glow hover:from-primary-glow hover:to-primary transition-all duration-300 text-white border-0 shadow-medium hover:shadow-large"
+                    className="w-full mt-6 bg-gradient-primary hover:opacity-90 transition-opacity"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRoleSelect(role.id as 'STUDENT' | 'ADMIN' | 'COMPANY');
+                    }}
                   >
-                    Continue as {role.title.replace("I'm a ", "")}
+                    Continue as {role.title}
                   </Button>
                 </CardContent>
               </Card>
@@ -105,31 +115,16 @@ const RoleGate = () => {
           })}
         </div>
 
-        {/* Features Overview */}
-        <div className="text-center">
-          <div className="grid grid-cols-3 gap-8 max-w-2xl mx-auto">
-            <div className="text-center">
-              <div className="bg-gradient-primary p-3 rounded-full w-fit mx-auto mb-3 shadow-medium">
-                <QrCode className="h-6 w-6 text-white" />
-              </div>
-              <h4 className="font-semibold text-sm">QR Attendance</h4>
-              <p className="text-xs text-muted-foreground">Real-time scanning</p>
-            </div>
-            <div className="text-center">
-              <div className="bg-gradient-secondary p-3 rounded-full w-fit mx-auto mb-3 shadow-medium">
-                <BarChart3 className="h-6 w-6 text-white" />
-              </div>
-              <h4 className="font-semibold text-sm">Analytics</h4>
-              <p className="text-xs text-muted-foreground">Detailed insights</p>
-            </div>
-            <div className="text-center">
-              <div className="bg-gradient-to-br from-indigo-500 to-purple-500 p-3 rounded-full w-fit mx-auto mb-3 shadow-medium">
-                <Users className="h-6 w-6 text-white" />
-              </div>
-              <h4 className="font-semibold text-sm">Feedback</h4>
-              <p className="text-xs text-muted-foreground">Structured reviews</p>
-            </div>
-          </div>
+        {/* Footer */}
+        <div className="text-center mt-12">
+          <p className="text-sm text-muted-foreground">
+            Demo Credentials: <br />
+            <span className="font-mono text-xs">
+              Student: student@intrack.app / Student@123<br />
+              Company: company@intrack.app / Company@123<br />
+              Admin: admin@intrack.app / Admin@123
+            </span>
+          </p>
         </div>
       </div>
     </div>

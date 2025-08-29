@@ -1,53 +1,53 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { AuthState, User, Role } from '@/types';
+import { User, Role } from '@/types';
 
-interface AuthStore extends AuthState {
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (data: RegisterData) => Promise<boolean>;
-  logout: () => void;
-  setUser: (user: User) => void;
-  selectRole: (role: Role) => void;
+interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  token: string | null;
   selectedRole: Role | null;
+
+  // Actions
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (userData: Omit<User, 'id' | 'createdAt'>) => Promise<boolean>;
+  logout: () => void;
+  setSelectedRole: (role: Role) => void;
+  clearStorage: () => void;
 }
 
-interface RegisterData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-  role: Role;
-}
-
-// Mock users for demo
+// Mock user data
 const mockUsers: User[] = [
   {
     id: '1',
     firstName: 'Admin',
     lastName: 'User',
     email: 'admin@intrack.app',
+    mobileNumber: '9876543210',
     role: 'ADMIN',
     createdAt: new Date().toISOString(),
   },
   {
     id: '2',
-    firstName: 'Student',
-    lastName: 'User',
+    firstName: 'John',
+    lastName: 'Student',
     email: 'student@intrack.app',
+    mobileNumber: '1234567890',
     role: 'STUDENT',
     createdAt: new Date().toISOString(),
   },
   {
     id: '3',
-    firstName: 'Company',
-    lastName: 'Viewer',
+    firstName: 'Sarah',
+    lastName: 'Manager',
     email: 'company@intrack.app',
-    role: 'COMPANY_VIEWER',
+    mobileNumber: '5555555555',
+    role: 'COMPANY',
     createdAt: new Date().toISOString(),
   },
 ];
 
-export const useAuthStore = create<AuthStore>()(
+export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
@@ -55,68 +55,79 @@ export const useAuthStore = create<AuthStore>()(
       token: null,
       selectedRole: null,
 
-      selectRole: (role: Role) => {
-        set({ selectedRole: role });
-      },
-
       login: async (email: string, password: string) => {
-        // Mock authentication
-        const user = mockUsers.find(u => u.email === email);
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Demo passwords
-        const validPasswords: Record<string, string> = {
-          'admin@intrack.app': 'Admin@123',
-          'student@intrack.app': 'Student@123',
-          'company@intrack.app': 'Company@123',
-        };
-
-        if (user && validPasswords[email] === password) {
-          const token = `mock-token-${user.id}`;
-          set({
+        const user = mockUsers.find(u => u.email === email);
+        console.log('Login attempt:', { email, password, user, role: user?.role });
+        
+        if (user && (password.toUpperCase().includes(user.role) || password === 'Student@123' || password === 'Admin@123' || password === 'Company@123')) {
+          console.log('Login successful for:', user.role);
+          const token = `token-${user.id}-${Date.now()}`;
+          set((state) => ({
+            ...state,
             user,
             isAuthenticated: true,
             token,
             selectedRole: user.role,
-          });
+          }));
           return true;
         }
+        console.log('Login failed - user not found or password incorrect');
         return false;
       },
 
-      register: async (data: RegisterData) => {
-        // Mock registration
+      register: async (userData) => {
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         const newUser: User = {
+          ...userData,
           id: Math.random().toString(36).substr(2, 9),
-          ...data,
           createdAt: new Date().toISOString(),
         };
         
-        const token = `mock-token-${newUser.id}`;
-        set({
+        set((state) => ({
+          ...state,
           user: newUser,
           isAuthenticated: true,
-          token,
+          token: `token-${newUser.id}-${Date.now()}`,
           selectedRole: newUser.role,
-        });
+        }));
+        
         return true;
       },
 
       logout: () => {
-        set({
+        set((state) => ({
+          ...state,
           user: null,
           isAuthenticated: false,
           token: null,
           selectedRole: null,
-        });
+        }));
       },
 
-      setUser: (user: User) => {
-        set({ user });
+      setSelectedRole: (role: Role) => {
+        set((state) => ({
+          ...state,
+          selectedRole: role
+        }));
+      },
+
+      clearStorage: () => {
+        set((state) => ({
+          ...state,
+          user: null,
+          isAuthenticated: false,
+          token: null,
+          selectedRole: null,
+        }));
       },
     }),
     {
-      name: 'intrack-auth',
-      // Only persist selectedRole to avoid auto-login on refresh/dev start
+      name: 'auth-storage',
       partialize: (state) => ({ selectedRole: state.selectedRole }),
     }
   )

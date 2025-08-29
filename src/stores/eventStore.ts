@@ -1,9 +1,9 @@
 import { create } from 'zustand';
-import { Event, Attendance, Feedback, AnalyticsData } from '@/types';
+import { IndustrialVisit, Attendance, Feedback, AnalyticsData } from '@/types';
 
-interface EventStore {
-  events: Event[];
-  currentEvent: Event | null;
+interface VisitStore {
+  visits: IndustrialVisit[];
+  currentVisit: IndustrialVisit | null;
   attendances: Attendance[];
   feedbacks: Feedback[];
   qrToken: string | null;
@@ -11,32 +11,29 @@ interface EventStore {
   analytics: AnalyticsData | null;
 
   // Actions
-  loadEvents: () => Promise<void>;
-  createEvent: (event: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Event>;
-  updateEvent: (id: string, updates: Partial<Event>) => Promise<Event>;
-  deleteEvent: (id: string) => Promise<void>;
-  setCurrentEvent: (event: Event | null) => void;
-  generateQR: (eventId: string) => Promise<{ token: string; expiry: Date }>;
-  rotateQR: (eventId: string) => Promise<{ token: string; expiry: Date }>;
+  loadVisits: () => Promise<void>;
+  createVisit: (visit: Omit<IndustrialVisit, 'id' | 'createdAt' | 'updatedAt' | 'qrCode'>) => Promise<IndustrialVisit>;
+  updateVisit: (id: string, updates: Partial<IndustrialVisit>) => Promise<IndustrialVisit>;
+  deleteVisit: (id: string) => Promise<void>;
+  setCurrentVisit: (visit: IndustrialVisit | null) => void;
+  generateQR: (visitId: string) => Promise<{ token: string; expiry: Date }>;
+  rotateQR: (visitId: string) => Promise<{ token: string; expiry: Date }>;
   checkIn: (qrToken: string, gpsLat: number, gpsLng: number) => Promise<boolean>;
-  submitFeedback: (feedback: Omit<Feedback, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<boolean>;
-  loadAnalytics: (eventId: string) => Promise<void>;
+  submitFeedback: (feedback: Omit<Feedback, 'id' | 'studentId' | 'createdAt' | 'updatedAt'>) => Promise<boolean>;
+  loadAnalytics: (visitId: string) => Promise<void>;
 }
 
 // Mock data
-const mockEvents: Event[] = [
+const mockVisits: IndustrialVisit[] = [
   {
     id: '1',
-    title: 'Tech Innovation Workshop',
-    description: 'Hands-on workshop on emerging technologies and innovation methodologies',
+    studentId: '2',
     companyName: 'TechCorp Solutions',
-    locationLat: 40.7128,
-    locationLng: -74.0060,
-    radiusMeters: 100,
+    visitDate: new Date().toISOString().split('T')[0],
+    purpose: 'Software Development Internship',
     startTime: new Date(Date.now() + 1000 * 60 * 30).toISOString(), // 30 minutes from now
     endTime: new Date(Date.now() + 1000 * 60 * 60 * 3).toISOString(), // 3 hours from now
-    createdById: '1',
-    qrNonce: 'nonce-123',
+    qrCode: 'qr-techcorp-123',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     attendanceCount: 24,
@@ -45,15 +42,13 @@ const mockEvents: Event[] = [
   },
   {
     id: '2',
-    title: 'Manufacturing Plant Visit',
-    description: 'Industrial visit to state-of-the-art manufacturing facility',
+    studentId: '2',
     companyName: 'Industrial Dynamics Inc.',
-    locationLat: 40.7580,
-    locationLng: -73.9855,
-    radiusMeters: 150,
+    visitDate: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString().split('T')[0], // Tomorrow
+    purpose: 'Manufacturing Process Study',
     startTime: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(), // Tomorrow
     endTime: new Date(Date.now() + 1000 * 60 * 60 * 28).toISOString(), // Tomorrow + 4 hours
-    createdById: '1',
+    qrCode: 'qr-industrial-456',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     attendanceCount: 0,
@@ -65,8 +60,8 @@ const mockEvents: Event[] = [
 const mockAttendances: Attendance[] = [
   {
     id: '1',
-    userId: '2',
-    eventId: '1',
+    studentId: '2',
+    visitId: '1',
     checkInAt: new Date().toISOString(),
     gpsLat: 40.7128,
     gpsLng: -74.0060,
@@ -78,39 +73,42 @@ const mockAttendances: Attendance[] = [
 const mockFeedbacks: Feedback[] = [
   {
     id: '1',
-    userId: '2',
-    eventId: '1',
+    studentId: '2',
+    visitId: '1',
     starsContent: 5,
     starsDelivery: 4,
     starsRelevance: 5,
     recommend: true,
-    shortAnswer: 'Great workshop!',
-    longAnswer: 'The workshop was incredibly informative and well-structured. I learned a lot about modern tech innovations.',
+    shortAnswer: 'Great visit!',
+    longAnswer: 'The visit was incredibly informative and well-structured. I learned a lot about modern tech innovations.',
     sentiment: 0.8,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
 ];
 
-export const useEventStore = create<EventStore>((set, get) => ({
-  events: [],
-  currentEvent: null,
+export const useVisitStore = create<VisitStore>((set, get) => ({
+  visits: [],
+  currentVisit: null,
   attendances: [],
   feedbacks: [],
   qrToken: null,
   qrExpiry: null,
   analytics: null,
 
-  loadEvents: async () => {
+  loadVisits: async () => {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 500));
-    set({ events: mockEvents });
+    set((state) => ({ ...state, visits: mockVisits }));
   },
 
-  createEvent: async (eventData) => {
-    const newEvent: Event = {
-      ...eventData,
+  createVisit: async (visitData) => {
+    console.log('createVisit called with:', visitData);
+    
+    const newVisit: IndustrialVisit = {
+      ...visitData,
       id: Math.random().toString(36).substr(2, 9),
+      qrCode: `qr-${visitData.companyName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       attendanceCount: 0,
@@ -118,89 +116,91 @@ export const useEventStore = create<EventStore>((set, get) => ({
       averageRating: 0,
     };
     
-    set(state => ({
-      events: [...state.events, newEvent]
+    console.log('New visit object:', newVisit);
+    
+    set((state) => ({
+      ...state,
+      visits: [...state.visits, newVisit]
     }));
     
-    return newEvent;
+    console.log('Returning new visit:', newVisit);
+    return newVisit;
   },
 
-  updateEvent: async (id, updates) => {
-    const updatedEvent = { ...get().events.find(e => e.id === id)!, ...updates, updatedAt: new Date().toISOString() };
+  updateVisit: async (id, updates) => {
+    const updatedVisit = { ...get().visits.find(v => v.id === id)!, ...updates, updatedAt: new Date().toISOString() };
     
-    set(state => ({
-      events: state.events.map(e => e.id === id ? updatedEvent : e)
+    set((state) => ({
+      ...state,
+      visits: state.visits.map(v => v.id === id ? updatedVisit : v)
     }));
     
-    return updatedEvent;
+    return updatedVisit;
   },
 
-  deleteEvent: async (id) => {
-    set(state => ({
-      events: state.events.filter(e => e.id !== id)
+  deleteVisit: async (id) => {
+    set((state) => ({
+      ...state,
+      visits: state.visits.filter(v => v.id !== id)
     }));
   },
 
-  setCurrentEvent: (event) => {
-    set({ currentEvent: event });
+  setCurrentVisit: (visit) => {
+    set((state) => ({
+      ...state,
+      currentVisit: visit
+    }));
   },
 
-  generateQR: async (eventId) => {
-    const token = `qr-${eventId}-${Date.now()}`;
+  generateQR: async (visitId) => {
+    const token = `qr-${visitId}-${Date.now()}`;
     const expiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
     
-    set({ qrToken: token, qrExpiry: expiry });
+    set((state) => ({
+      ...state,
+      qrToken: token,
+      qrExpiry: expiry
+    }));
     
     return { token, expiry };
   },
 
-  rotateQR: async (eventId) => {
-    return get().generateQR(eventId);
+  rotateQR: async (visitId) => {
+    return get().generateQR(visitId);
   },
 
   checkIn: async (qrToken, gpsLat, gpsLng) => {
     // Parse QR (supports JSON token as generated by QRGenerator)
-    let parsed: { eventId?: string } = {};
+    let parsed: { visitId?: string } = {};
     try {
       parsed = JSON.parse(qrToken);
     } catch {}
-    const eventIdFromToken = parsed.eventId || qrToken.split('-')[1] || '1';
+    const visitIdFromToken = parsed.visitId || qrToken.split('-')[1] || '1';
 
-    const event = get().events.find(e => e.id === eventIdFromToken) || get().events[0];
-    if (!event) return false;
+    const visit = get().visits.find(v => v.id === visitIdFromToken) || get().visits[0];
+    if (!visit) return false;
 
     // Time window validation
     const now = Date.now();
-    const starts = new Date(event.startTime).getTime();
-    const ends = new Date(event.endTime).getTime();
+    const starts = new Date(visit.startTime).getTime();
+    const ends = new Date(visit.endTime).getTime();
     if (now < starts || now > ends) {
-      return false;
-    }
-
-    // GPS radius validation (haversine)
-    const toRad = (v: number) => (v * Math.PI) / 180;
-    const R = 6371000;
-    const dLat = toRad(gpsLat - event.locationLat);
-    const dLng = toRad(gpsLng - event.locationLng);
-    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(event.locationLat)) * Math.cos(toRad(gpsLat)) * Math.sin(dLng / 2) ** 2;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c;
-    const withinRadius = distance <= event.radiusMeters;
-    if (!withinRadius) {
       return false;
     }
 
     const newAttendance: Attendance = {
       id: Math.random().toString(36).substr(2, 9),
-      userId: '2',
-      eventId: event.id,
+      studentId: '2',
+      visitId: visit.id,
       checkInAt: new Date().toISOString(),
       gpsLat,
       gpsLng,
       gpsAccuracy: 10,
       isValidGPS: true,
     };
-    set(state => ({ attendances: [...state.attendances, newAttendance] }));
+    set((state) => ({ 
+      attendances: [...state.attendances, newAttendance] 
+    }));
     return true;
   },
 
@@ -208,22 +208,23 @@ export const useEventStore = create<EventStore>((set, get) => ({
     const newFeedback: Feedback = {
       ...feedbackData,
       id: Math.random().toString(36).substr(2, 9),
-      userId: '2', // Current user
+      studentId: '2', // Current user
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     
-    set(state => ({
+    set((state) => ({
+      ...state,
       feedbacks: [...state.feedbacks, newFeedback]
     }));
     
     return true;
   },
 
-  loadAnalytics: async (eventId) => {
+  loadAnalytics: async (visitId) => {
     // Mock analytics data
     const analytics: AnalyticsData = {
-      totalEvents: 5,
+      totalVisits: 5,
       activeSessions: 1,
       attendanceRate: 0.85,
       averageRating: 4.2,
@@ -248,8 +249,13 @@ export const useEventStore = create<EventStore>((set, get) => ({
         { word: 'useful', count: 8 },
         { word: 'relevant', count: 7 },
       ],
+      sentimentAnalysis: [
+        { sentiment: 'positive', count: 35, percentage: 70 },
+        { sentiment: 'neutral', count: 10, percentage: 20 },
+        { sentiment: 'negative', count: 5, percentage: 10 },
+      ],
     };
     
-    set({ analytics });
+    set((state) => ({ ...state, analytics }));
   },
 }));
