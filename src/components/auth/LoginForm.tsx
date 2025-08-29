@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, ArrowLeft, Sparkles } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import { useAuthStore } from '@/stores/authStore';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().min(1, 'Password is required'),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -22,10 +22,32 @@ type LoginFormData = z.infer<typeof loginSchema>;
 const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login, selectedRole, clearStorage } = useAuthStore();
+  const [backendStatus, setBackendStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+  const { selectedRole, clearStorage } = useAuthStore();
   const { toast } = useToast();
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Test backend connection on component mount
+  useEffect(() => {
+    const testBackendConnection = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/health');
+        if (response.ok) {
+          console.log('✅ Backend is running');
+          setBackendStatus('connected');
+        } else {
+          console.log('❌ Backend responded with error:', response.status);
+          setBackendStatus('disconnected');
+        }
+      } catch (error) {
+        console.log('❌ Cannot connect to backend:', error.message);
+        setBackendStatus('disconnected');
+      }
+    };
+
+    testBackendConnection();
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -41,28 +63,28 @@ const LoginForm = () => {
     const particles: Array<{x: number, y: number, vx: number, vy: number, size: number, opacity: number, color: string}> = [];
     for (let i = 0; i < 60; i++) {
       const colors = [
-        'hsla(238, 54%, 55%, 0.4)',
         'hsla(160, 84%, 39%, 0.4)',
-        'hsla(238, 64%, 70%, 0.4)',
-        'hsla(160, 74%, 50%, 0.4)'
+        'hsla(238, 54%, 55%, 0.4)',
+        'hsla(160, 74%, 50%, 0.4)',
+        'hsla(238, 64%, 70%, 0.4)'
       ];
       particles.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 0.6,
-        vy: (Math.random() - 0.5) * 0.6,
-        size: Math.random() * 3 + 1,
-        opacity: Math.random() * 0.6 + 0.2,
+        vx: (Math.random() - 0.5) * 0.7,
+        vy: (Math.random() - 0.5) * 0.7,
+        size: Math.random() * 4 + 1,
+        opacity: Math.random() * 0.7 + 0.2,
         color: colors[Math.floor(Math.random() * colors.length)]
       });
     }
 
     // Floating geometric shapes
     const shapes = [
-      { x: 100, y: 100, size: 30, rotation: 0, speed: 0.02, type: 'circle' },
-      { x: canvas.width - 150, y: 80, size: 25, rotation: 0, speed: 0.03, type: 'square' },
-      { x: 200, y: canvas.height - 120, size: 35, rotation: 0, speed: 0.025, type: 'triangle' },
-      { x: canvas.width - 200, y: canvas.height - 100, size: 28, rotation: 0, speed: 0.035, type: 'circle' },
+      { x: 150, y: 120, size: 32, rotation: 0, speed: 0.025, type: 'diamond' },
+      { x: canvas.width - 180, y: 100, size: 28, rotation: 0, speed: 0.035, type: 'hexagon' },
+      { x: 250, y: canvas.height - 150, size: 38, rotation: 0, speed: 0.03, type: 'star' },
+      { x: canvas.width - 250, y: canvas.height - 120, size: 30, rotation: 0, speed: 0.04, type: 'diamond' },
     ];
 
     const animate = () => {
@@ -70,23 +92,24 @@ const LoginForm = () => {
 
       // Enhanced gradient background
       const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-      gradient.addColorStop(0, 'hsl(238, 100%, 98%)');
-      gradient.addColorStop(0.3, 'hsl(215, 100%, 97%)');
-      gradient.addColorStop(0.7, 'hsl(238, 100%, 96%)');
-      gradient.addColorStop(1, 'hsl(215, 100%, 95%)');
+      gradient.addColorStop(0, 'hsl(160, 100%, 98%)');
+      gradient.addColorStop(0.25, 'hsl(215, 100%, 97%)');
+      gradient.addColorStop(0.5, 'hsl(238, 100%, 96%)');
+      gradient.addColorStop(0.75, 'hsl(160, 100%, 95%)');
+      gradient.addColorStop(1, 'hsl(215, 100%, 94%)');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       // Subtle grid pattern
-      ctx.strokeStyle = 'hsla(238, 54%, 55%, 0.02)';
+      ctx.strokeStyle = 'hsla(160, 84%, 39%, 0.02)';
       ctx.lineWidth = 1;
-      for (let i = 0; i < canvas.width; i += 50) {
+      for (let i = 0; i < canvas.width; i += 60) {
         ctx.beginPath();
         ctx.moveTo(i, 0);
         ctx.lineTo(i, canvas.height);
         ctx.stroke();
       }
-      for (let i = 0; i < canvas.height; i += 50) {
+      for (let i = 0; i < canvas.height; i += 60) {
         ctx.beginPath();
         ctx.moveTo(0, i);
         ctx.lineTo(canvas.width, i);
@@ -102,7 +125,7 @@ const LoginForm = () => {
         if (particle.y < 0 || particle.y > canvas.height) particle.vy *= -1;
 
         ctx.shadowColor = particle.color;
-        ctx.shadowBlur = 8;
+        ctx.shadowBlur = 10;
         ctx.beginPath();
         ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
         ctx.fillStyle = particle.color;
@@ -119,26 +142,44 @@ const LoginForm = () => {
         ctx.rotate(shape.rotation);
         
         // Floating animation
-        const floatOffset = Math.sin(Date.now() * 0.001 + shape.x * 0.01) * 4;
+        const floatOffset = Math.sin(Date.now() * 0.001 + shape.x * 0.01) * 5;
         ctx.translate(0, floatOffset);
         
         switch (shape.type) {
-          case 'circle':
+          case 'diamond':
             ctx.fillStyle = 'hsla(238, 54%, 55%, 0.1)';
             ctx.beginPath();
-            ctx.arc(0, 0, shape.size, 0, Math.PI * 2);
+            ctx.moveTo(0, -shape.size);
+            ctx.lineTo(shape.size, 0);
+            ctx.lineTo(0, shape.size);
+            ctx.lineTo(-shape.size, 0);
+            ctx.closePath();
             ctx.fill();
             break;
-          case 'square':
-            ctx.fillStyle = 'hsla(160, 84%, 39%, 0.1)';
-            ctx.fillRect(-shape.size, -shape.size, shape.size * 2, shape.size * 2);
+          case 'hexagon':
+            ctx.fillStyle = 'hsla(160, 74%, 50%, 0.1)';
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+              const angle = (i * Math.PI) / 3;
+              const x = Math.cos(angle) * shape.size;
+              const y = Math.sin(angle) * shape.size;
+              if (i === 0) ctx.moveTo(x, y);
+              else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
             break;
-          case 'triangle':
+          case 'star':
             ctx.fillStyle = 'hsla(238, 64%, 70%, 0.1)';
             ctx.beginPath();
-            ctx.moveTo(0, -shape.size);
-            ctx.lineTo(-shape.size, shape.size);
-            ctx.lineTo(shape.size, shape.size);
+            for (let i = 0; i < 10; i++) {
+              const angle = (i * Math.PI) / 5;
+              const radius = i % 2 === 0 ? shape.size : shape.size * 0.5;
+              const x = Math.cos(angle) * radius;
+              const y = Math.sin(angle) * radius;
+              if (i === 0) ctx.moveTo(x, y);
+              else ctx.lineTo(x, y);
+            }
             ctx.closePath();
             ctx.fill();
             break;
@@ -173,36 +214,77 @@ const LoginForm = () => {
   });
 
   const onSubmit = async (data: LoginFormData) => {
+    if (backendStatus !== 'connected') {
+      toast({
+        title: 'Backend Not Connected',
+        description: 'Please make sure the backend server is running on port 5000.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const success = await login(data.email, data.password);
-      if (success) {
+      console.log('Attempting to login with:', data.email);
+      
+      // Connect to real backend API
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+        }),
+      });
+
+      console.log('Response status:', response.status);
+      const result = await response.json();
+      console.log('Response data:', result);
+
+      if (response.ok && result.success) {
+        // Store the token and user data
+        localStorage.setItem('token', result.data.token);
+        localStorage.setItem('user', JSON.stringify(result.data.user));
+        
         toast({
           title: 'Welcome back!',
           description: 'You have been successfully logged in.',
         });
         
         // Redirect based on role
-        if (selectedRole === 'STUDENT') {
+        if (result.data.user.role === 'STUDENT') {
           navigate('/student');
-        } else if (selectedRole === 'ADMIN') {
+        } else if (result.data.user.role === 'ADMIN') {
           navigate('/admin');
-        } else if (selectedRole === 'COMPANY') {
+        } else if (result.data.user.role === 'COMPANY') {
           navigate('/company');
         }
       } else {
         toast({
           title: 'Login failed',
-          description: 'Invalid email or password. Please try again.',
+          description: result.message || 'Invalid email or password. Please try again.',
           variant: 'destructive',
         });
       }
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'An unexpected error occurred. Please try again.',
-        variant: 'destructive',
-      });
+      console.error('Login error:', error);
+      
+      // More specific error messages
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        toast({
+          title: 'Connection Error',
+          description: 'Cannot connect to server. Please make sure the backend is running on port 5000.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: `An unexpected error occurred: ${error.message}`,
+          variant: 'destructive',
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -238,6 +320,19 @@ const LoginForm = () => {
             Back to role selection
           </Button>
 
+          {/* Backend Status Indicator */}
+          {backendStatus === 'checking' && (
+            <div className="mb-4 p-3 bg-yellow-100 border border-yellow-300 rounded-lg">
+              <p className="text-sm text-yellow-800">Checking backend connection...</p>
+            </div>
+          )}
+          
+          {backendStatus === 'disconnected' && (
+            <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded-lg">
+              <p className="text-sm text-red-800">⚠️ Backend not connected. Please start the server on port 5000.</p>
+            </div>
+          )}
+
           {/* Enhanced Login Card */}
           <Card className="shadow-2xl border-0 backdrop-blur-enhanced bg-white/90 hover:bg-white/95 transition-all duration-500 transform hover:scale-[1.02]">
             <CardHeader className="text-center pb-6">
@@ -268,7 +363,7 @@ const LoginForm = () => {
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground mt-3 italic">
-                    Note: Password must contain the role name
+                    Note: These are demo credentials for testing
                   </p>
                 </div>
               )}
@@ -299,7 +394,7 @@ const LoginForm = () => {
                     placeholder="Enter your email"
                     {...register('email')}
                     className={`h-12 text-base transition-all duration-300 focus:scale-[1.02] focus:shadow-lg ${
-                      errors.email ? 'border-destructive ring-destructive/20' : 'border-muted focus:border-primary'
+                      errors.email ? 'border-destructive ring-destructive/20' : 'border-muted focus:border-secondary'
                     }`}
                   />
                   {errors.email && (
@@ -316,7 +411,7 @@ const LoginForm = () => {
                       placeholder="Enter your password"
                       {...register('password')}
                       className={`h-12 text-base pr-12 transition-all duration-300 focus:scale-[1.02] focus:shadow-lg ${
-                        errors.password ? 'border-destructive ring-destructive/20' : 'border-muted focus:border-primary'
+                        errors.password ? 'border-destructive ring-destructive/20' : 'border-muted focus:border-secondary'
                       }`}
                     />
                     <Button
@@ -338,10 +433,11 @@ const LoginForm = () => {
                   )}
                 </div>
 
+                {/* Submit Button */}
                 <Button
                   type="submit"
-                  disabled={isLoading}
-                  className="w-full h-12 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-white font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg btn-3d-hover"
+                  disabled={isLoading || backendStatus !== 'connected'}
+                  className="w-full h-12 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-white font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg btn-3d-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? (
                     <div className="flex items-center gap-2">
@@ -354,16 +450,17 @@ const LoginForm = () => {
                 </Button>
               </form>
 
-              {/* Register Link */}
+              {/* Registration Link */}
               <div className="text-center pt-4">
                 <p className="text-base text-muted-foreground">
                   Don't have an account?{' '}
-                  <Link
-                    to="/register"
-                    className="text-primary hover:text-primary/80 font-semibold hover:underline transition-all duration-300"
+                  <Button
+                    variant="link"
+                    onClick={() => navigate('/register')}
+                    className="p-0 h-auto text-secondary hover:text-secondary/80 font-semibold hover:underline transition-all duration-300"
                   >
                     Create one
-                  </Link>
+                  </Button>
                 </p>
               </div>
             </CardContent>

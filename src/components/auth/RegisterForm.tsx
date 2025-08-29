@@ -18,6 +18,7 @@ const registerSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email'),
+  mobileNumber: z.string().length(10, 'Mobile number must be exactly 10 digits').regex(/^\d+$/, 'Mobile number must contain only digits'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
   role: z.enum(['STUDENT', 'ADMIN', 'COMPANY']),
@@ -32,17 +33,39 @@ const RegisterForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { register: registerUser, selectedRole } = useAuthStore();
+  const [backendStatus, setBackendStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+  const { selectedRole } = useAuthStore();
   const { toast } = useToast();
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Test backend connection on component mount
+  useEffect(() => {
+    const testBackendConnection = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/health');
+        if (response.ok) {
+          console.log('✅ Backend is running');
+          setBackendStatus('connected');
+        } else {
+          console.log('❌ Backend responded with error:', response.status);
+          setBackendStatus('disconnected');
+        }
+      } catch (error) {
+        console.log('❌ Cannot connect to backend:', error.message);
+        setBackendStatus('disconnected');
+      }
+    };
+
+    testBackendConnection();
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
-    if (!canvas) return;
+    if (!ctx) return;
 
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -213,17 +236,44 @@ const RegisterForm = () => {
   });
 
   const onSubmit = async (data: RegisterFormData) => {
+    if (backendStatus !== 'connected') {
+      toast({
+        title: 'Backend Not Connected',
+        description: 'Please make sure the backend server is running on port 5000.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const success = await registerUser({
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email,
-        password: data.password,
-        role: data.role,
+      console.log('Attempting to register with data:', data);
+      
+      // Connect to real backend API
+      const response = await fetch('http://localhost:5000/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          mobileNumber: data.mobileNumber,
+          password: data.password,
+          role: data.role,
+        }),
       });
 
-      if (success) {
+      console.log('Response status:', response.status);
+      const result = await response.json();
+      console.log('Response data:', result);
+
+      if (response.ok && result.success) {
+        // Store the token and user data
+        localStorage.setItem('token', result.data.token);
+        localStorage.setItem('user', JSON.stringify(result.data.user));
+        
         toast({
           title: 'Account created!',
           description: 'Your account has been successfully created.',
@@ -240,16 +290,27 @@ const RegisterForm = () => {
       } else {
         toast({
           title: 'Registration failed',
-          description: 'Please try again with different details.',
+          description: result.message || 'Please try again with different details.',
           variant: 'destructive',
         });
       }
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'An unexpected error occurred. Please try again.',
-        variant: 'destructive',
-      });
+      console.error('Registration error:', error);
+      
+      // More specific error messages
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        toast({
+          title: 'Connection Error',
+          description: 'Cannot connect to server. Please make sure the backend is running on port 5000.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: `An unexpected error occurred: ${error.message}`,
+          variant: 'destructive',
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -276,6 +337,19 @@ const RegisterForm = () => {
             <ArrowLeft className="h-5 w-5 mr-3 group-hover:-translate-x-1 transition-transform duration-300" />
             Back to role selection
           </Button>
+
+          {/* Backend Status Indicator */}
+          {backendStatus === 'checking' && (
+            <div className="mb-4 p-3 bg-yellow-100 border border-yellow-300 rounded-lg">
+              <p className="text-sm text-yellow-800">Checking backend connection...</p>
+            </div>
+          )}
+          
+          {backendStatus === 'disconnected' && (
+            <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded-lg">
+              <p className="text-sm text-red-800">⚠️ Backend not connected. Please start the server on port 5000.</p>
+            </div>
+          )}
 
           {/* Enhanced Register Card */}
           <Card className="shadow-2xl border-0 backdrop-blur-enhanced bg-white/90 hover:bg-white/95 transition-all duration-500 transform hover:scale-[1.02]">
@@ -340,6 +414,24 @@ const RegisterForm = () => {
                   )}
                 </div>
 
+                {/* Mobile Number Field */}
+                <div className="space-y-3">
+                  <Label htmlFor="mobileNumber" className="text-base font-semibold">Mobile Number</Label>
+                  <Input
+                    id="mobileNumber"
+                    type="tel"
+                    placeholder="1234567890"
+                    maxLength={10}
+                    {...register('mobileNumber')}
+                    className={`h-12 text-base transition-all duration-300 focus:scale-[1.02] focus:shadow-lg ${
+                      errors.mobileNumber ? 'border-destructive ring-destructive/20' : 'border-muted focus:border-secondary'
+                    }`}
+                  />
+                  {errors.mobileNumber && (
+                    <p className="text-sm text-destructive animate-pulse">{errors.mobileNumber.message}</p>
+                  )}
+                </div>
+
                 {/* Role Field */}
                 <div className="space-y-3">
                   <Label htmlFor="role" className="text-base font-semibold">Role</Label>
@@ -391,7 +483,7 @@ const RegisterForm = () => {
                   <div className="p-3 bg-gradient-to-r from-secondary/10 to-secondary/5 rounded-lg border border-secondary/20">
                     <p className="text-xs text-muted-foreground flex items-center gap-2">
                       <Sparkles className="h-3 w-3" />
-                      Password must contain your role name (e.g., "Student", "Admin", "Company")
+                      Password must be at least 6 characters
                     </p>
                   </div>
                   {errors.password && (
@@ -434,8 +526,8 @@ const RegisterForm = () => {
                 {/* Submit Button */}
                 <Button
                   type="submit"
-                  disabled={isLoading}
-                  className="w-full h-12 bg-gradient-to-r from-secondary to-primary hover:from-secondary/90 hover:to-primary/90 text-white font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg btn-3d-hover"
+                  disabled={isLoading || backendStatus !== 'connected'}
+                  className="w-full h-12 bg-gradient-to-r from-secondary to-primary hover:from-secondary/90 hover:to-primary/90 text-white font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg btn-3d-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? (
                     <div className="flex items-center gap-2">
