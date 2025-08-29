@@ -98,52 +98,26 @@ All colors MUST be HSL.
 
     --gradient-primary: linear-gradient(135deg, hsl(238, 64%, 70%), hsl(238, 74%, 80%));
     --gradient-secondary: linear-gradient(135deg, hsl(160, 74%, 50%), hsl(160, 64%, 60%));
-    --gradient-surface: linear-gradient(135deg, hsl(215, 28%, 12%), hsl(215, 28%, 15%));
+    --gradient-surface: linear-gradient(135deg, hsl(215, 28%, 15%), hsl(215, 28%, 20%));
     
     --shadow-soft: 0 1px 3px 0 hsl(238 64% 70% / 0.2), 0 1px 2px -1px hsl(238 64% 70% / 0.2);
     --shadow-medium: 0 4px 6px -1px hsl(238 64% 70% / 0.2), 0 2px 4px -2px hsl(238 64% 70% / 0.2);
     --shadow-large: 0 10px 15px -3px hsl(238 64% 70% / 0.2), 0 4px 6px -4px hsl(238 64% 70% / 0.2);
-    --shadow-glow: 0 0 30px hsl(238 74% 80% / 0.4);
-
-    --sidebar-background: 215 28% 10%;
-    --sidebar-foreground: 215 13% 93%;
-    --sidebar-primary: 238 64% 70%;
-    --sidebar-primary-foreground: 215 28% 8%;
-    --sidebar-accent: 215 28% 15%;
-    --sidebar-accent-foreground: 238 64% 70%;
-    --sidebar-border: 215 28% 20%;
-    --sidebar-ring: 238 64% 70%;
+    --shadow-glow: 0 0 20px hsl(238 74% 80% / 0.4);
   }
 }
 
-@layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply bg-background text-foreground font-sans antialiased;
-  }
-
-  /* Custom utilities */
-  .gradient-primary {
+@layer components {
+  .bg-gradient-primary {
     background: var(--gradient-primary);
   }
 
-  .gradient-secondary {
+  .bg-gradient-secondary {
     background: var(--gradient-secondary);
   }
 
-  .gradient-surface {
+  .bg-gradient-surface {
     background: var(--gradient-surface);
-  }
-
-  .shadow-soft {
-    box-shadow: var(--shadow-soft);
-  }
-
-  .shadow-medium {
-    box-shadow: var(--shadow-medium);
   }
 
   .shadow-large {
@@ -162,21 +136,181 @@ All colors MUST be HSL.
     transition: var(--transition-bounce);
   }
 
-  /* Scrollbar styling */
-  ::-webkit-scrollbar {
-    width: 6px;
+  /* Enhanced 3D Background Effects */
+  .canvas-3d {
+    background: linear-gradient(135deg, 
+      hsl(238, 100%, 99%) 0%, 
+      hsl(215, 100%, 98%) 25%, 
+      hsl(238, 100%, 97%) 50%, 
+      hsl(215, 100%, 96%) 75%, 
+      hsl(238, 100%, 95%) 100%
+    );
   }
 
-  ::-webkit-scrollbar-track {
-    background: hsl(var(--muted));
+  /* Floating Animation for 3D Objects */
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px) rotate(0deg);
+    }
+    33% {
+      transform: translateY(-10px) rotate(120deg);
+    }
+    66% {
+      transform: translateY(5px) rotate(240deg);
+    }
   }
 
-  ::-webkit-scrollbar-thumb {
-    background: hsl(var(--border));
-    border-radius: 3px;
+  .float-animation {
+    animation: float 6s ease-in-out infinite;
   }
 
-  ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground));
+  /* Particle Glow Effect */
+  @keyframes particle-glow {
+    0%, 100% {
+      opacity: 0.3;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(1.2);
+    }
+  }
+
+  .particle-glow {
+    animation: particle-glow 3s ease-in-out infinite;
+  }
+
+  /* Enhanced Card Hover Effects */
+  .card-3d-hover {
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transform-style: preserve-3d;
+  }
+
+  .card-3d-hover:hover {
+    transform: translateY(-8px) rotateX(5deg) rotateY(5deg);
+    box-shadow: 
+      0 20px 40px rgba(0, 0, 0, 0.1),
+      0 0 0 1px rgba(255, 255, 255, 0.1);
+  }
+
+  /* Gradient Text Animation */
+  @keyframes gradient-shift {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  .gradient-text-animated {
+    background: linear-gradient(
+      45deg,
+      hsl(238, 54%, 55%),
+      hsl(160, 84%, 39%),
+      hsl(238, 64%, 70%),
+      hsl(160, 74%, 50%)
+    );
+    background-size: 300% 300%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    animation: gradient-shift 4s ease infinite;
+  }
+
+  /* Backdrop Blur Enhancement */
+  .backdrop-blur-enhanced {
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+  }
+
+  /* Enhanced Button Hover Effects */
+  .btn-3d-hover {
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-3d-hover::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+  }
+
+  .btn-3d-hover:hover::before {
+    left: 100%;
+  }
+
+  .btn-3d-hover:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Floating Icons Animation */
+  @keyframes icon-float {
+    0%, 100% {
+      transform: translateY(0px) scale(1);
+    }
+    50% {
+      transform: translateY(-8px) scale(1.05);
+    }
+  }
+
+  .icon-float {
+    animation: icon-float 3s ease-in-out infinite;
+  }
+
+  /* Enhanced Background Patterns */
+  .bg-pattern-dots {
+    background-image: radial-gradient(circle, hsl(238, 54%, 55%, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  .bg-pattern-grid {
+    background-image: 
+      linear-gradient(hsl(238, 54%, 55%, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(238, 54%, 55%, 0.05) 1px, transparent 1px);
+    background-size: 30px 30px;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    background: var(--gradient-primary);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+
+  .border-gradient {
+    border: 2px solid;
+    border-image: var(--gradient-primary) 1;
+  }
+
+  .shadow-text {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .glow-text {
+    text-shadow: 0 0 20px hsl(238, 64%, 70%, 0.5);
+  }
+
+  /* Responsive 3D Effects */
+  @media (max-width: 768px) {
+    .card-3d-hover:hover {
+      transform: translateY(-4px) rotateX(2deg) rotateY(2deg);
+    }
+    
+    .btn-3d-hover:hover {
+      transform: translateY(-1px) scale(1.01);
+    }
   }
 }
