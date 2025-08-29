@@ -18,6 +18,7 @@ import FeedbackForm from "@/components/student/FeedbackForm";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import QRGenerator from "@/components/admin/QRGenerator";
 import EventCreator from "@/components/admin/EventCreator";
+import EventDetails from "@/components/admin/EventDetails";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -117,6 +118,14 @@ const App = () => {
               element={
                 <ProtectedRoute allowedRoles={['ADMIN']}>
                   <AdminDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/events/:eventId" 
+              element={
+                <ProtectedRoute allowedRoles={['ADMIN']}>
+                  <EventDetails />
                 </ProtectedRoute>
               } 
             />

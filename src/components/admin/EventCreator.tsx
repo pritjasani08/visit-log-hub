@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -22,6 +22,16 @@ const eventSchema = z.object({
   radiusMeters: z.number().min(10).max(1000),
   startTime: z.string().min(1, 'Start time is required'),
   endTime: z.string().min(1, 'End time is required'),
+  extraQuestions: z
+    .array(
+      z.object({
+        id: z.string(),
+        label: z.string().min(1),
+        required: z.boolean().optional(),
+        type: z.enum(['text', 'textarea', 'checkbox']).optional(),
+      })
+    )
+    .optional(),
 }).refine((data) => new Date(data.endTime) > new Date(data.startTime), {
   message: "End time must be after start time",
   path: ["endTime"],
@@ -32,6 +42,9 @@ type EventFormData = z.infer<typeof eventSchema>;
 const EventCreator = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mapVisible, setMapVisible] = useState(false);
+  const [newQuestionLabel, setNewQuestionLabel] = useState('');
+  const [newQuestionType, setNewQuestionType] = useState<'text' | 'textarea' | 'checkbox'>('text');
+  const [newQuestionRequired, setNewQuestionRequired] = useState<'optional' | 'required'>('optional');
   const { createEvent } = useEventStore();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -48,6 +61,7 @@ const EventCreator = () => {
       locationLat: 40.7128, // NYC default
       locationLng: -74.0060,
       radiusMeters: 100,
+      extraQuestions: [],
     },
   });
 
@@ -66,7 +80,7 @@ const EventCreator = () => {
         description: 'Your event has been successfully created.',
       });
 
-      navigate(`/admin/events/${event.id}`);
+      navigate(`/admin/events/${event.id}/qr`);
     } catch (error) {
       toast({
         title: 'Creation failed',
@@ -76,6 +90,16 @@ const EventCreator = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const onInvalid = () => {
+    // Show a concise toast when form is invalid
+    const firstError = Object.values(errors)[0] as any;
+    toast({
+      title: 'Please fix the highlighted fields',
+      description: firstError?.message || 'Some required fields are missing or invalid.',
+      variant: 'destructive',
+    });
   };
 
   const handleLocationPreset = (preset: string) => {
@@ -110,6 +134,12 @@ const EventCreator = () => {
     setValue('endTime', endTime.toISOString().slice(0, 16));
   };
 
+  useEffect(() => {
+    // Auto-fill default times so the form can be submitted without manual time input
+    generateDefaultTimes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-surface">
       <div className="max-w-3xl mx-auto px-4 py-8">
@@ -139,7 +169,7 @@ const EventCreator = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6">
               {/* Basic Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -149,6 +179,7 @@ const EventCreator = () => {
                     placeholder="Tech Innovation Workshop"
                     {...register('title')}
                     className={errors.title ? 'border-destructive' : ''}
+                    required
                   />
                   {errors.title && (
                     <p className="text-sm text-destructive">{errors.title.message}</p>
@@ -162,6 +193,7 @@ const EventCreator = () => {
                     placeholder="TechCorp Solutions"
                     {...register('companyName')}
                     className={errors.companyName ? 'border-destructive' : ''}
+                    required
                   />
                   {errors.companyName && (
                     <p className="text-sm text-destructive">{errors.companyName.message}</p>
@@ -204,6 +236,7 @@ const EventCreator = () => {
                       type="datetime-local"
                       {...register('startTime')}
                       className={errors.startTime ? 'border-destructive' : ''}
+                      required
                     />
                     {errors.startTime && (
                       <p className="text-sm text-destructive">{errors.startTime.message}</p>
@@ -217,6 +250,7 @@ const EventCreator = () => {
                       type="datetime-local"
                       {...register('endTime')}
                       className={errors.endTime ? 'border-destructive' : ''}
+                      required
                     />
                     {errors.endTime && (
                       <p className="text-sm text-destructive">{errors.endTime.message}</p>
@@ -242,6 +276,7 @@ const EventCreator = () => {
                       placeholder="40.7128"
                       {...register('locationLat', { valueAsNumber: true })}
                       className={errors.locationLat ? 'border-destructive' : ''}
+                      required
                     />
                     {errors.locationLat && (
                       <p className="text-sm text-destructive">{errors.locationLat.message}</p>
@@ -257,6 +292,7 @@ const EventCreator = () => {
                       placeholder="-74.0060"
                       {...register('locationLng', { valueAsNumber: true })}
                       className={errors.locationLng ? 'border-destructive' : ''}
+                      required
                     />
                     {errors.locationLng && (
                       <p className="text-sm text-destructive">{errors.locationLng.message}</p>
@@ -273,6 +309,7 @@ const EventCreator = () => {
                       placeholder="100"
                       {...register('radiusMeters', { valueAsNumber: true })}
                       className={errors.radiusMeters ? 'border-destructive' : ''}
+                      required
                     />
                     {errors.radiusMeters && (
                       <p className="text-sm text-destructive">{errors.radiusMeters.message}</p>
@@ -306,6 +343,91 @@ const EventCreator = () => {
                   <p className="font-medium mb-1">Current Location:</p>
                   <p>Lat: {watchedValues.locationLat?.toFixed(6)}, Lng: {watchedValues.locationLng?.toFixed(6)}</p>
                   <p>Attendance radius: {watchedValues.radiusMeters}m</p>
+                </div>
+              </div>
+
+              {/* Extra Feedback Questions */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Building className="h-5 w-5" />
+                  Extra Feedback Questions (optional)
+                </h3>
+                <div className="space-y-2">
+                  <Label>Add a question</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+                    <div className="md:col-span-2">
+                      <Input
+                        placeholder="Question label (e.g., Was the tour helpful?)"
+                        value={newQuestionLabel}
+                        onChange={(e) => setNewQuestionLabel(e.target.value)}
+                      />
+                    </div>
+                    <Select value={newQuestionType} onValueChange={(val) => setNewQuestionType(val as any)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Type (text)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="text">Text</SelectItem>
+                        <SelectItem value="textarea">Textarea</SelectItem>
+                        <SelectItem value="checkbox">Checkbox</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={newQuestionRequired} onValueChange={(val) => setNewQuestionRequired(val as any)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Optional/Required" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="optional">Optional</SelectItem>
+                        <SelectItem value="required">Required</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        const label = newQuestionLabel.trim();
+                        if (!label) return;
+                        const newQ = {
+                          id: Math.random().toString(36).slice(2),
+                          label,
+                          type: newQuestionType,
+                          required: newQuestionRequired === 'required',
+                        } as const;
+                        setValue('extraQuestions', [...(watchedValues.extraQuestions || []), newQ]);
+                        setNewQuestionLabel('');
+                        setNewQuestionType('text');
+                        setNewQuestionRequired('optional');
+                      }}
+                    >
+                      Add
+                    </Button>
+                  </div>
+                  {!!(watchedValues.extraQuestions || []).length && (
+                    <div className="space-y-2">
+                      <div className="text-sm text-muted-foreground">
+                        {(watchedValues.extraQuestions || []).length} question(s) added
+                      </div>
+                      <div className="space-y-2">
+                        {(watchedValues.extraQuestions || []).map((q) => (
+                          <div key={q.id} className="flex items-center justify-between border rounded-md p-2">
+                            <div className="text-sm">
+                              <div className="font-medium">{q.label}</div>
+                              <div className="text-muted-foreground">
+                                {q.type || 'text'} · {q.required ? 'Required' : 'Optional'}
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => setValue('extraQuestions', (watchedValues.extraQuestions || []).filter(x => x.id !== q.id))}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

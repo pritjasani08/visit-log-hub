@@ -26,6 +26,12 @@ export interface Event {
   attendanceCount?: number;
   feedbackCount?: number;
   averageRating?: number;
+  extraQuestions?: Array<{
+    id: string;
+    label: string;
+    required?: boolean;
+    type?: 'text' | 'textarea' | 'checkbox';
+  }>;
 }
 
 export interface Attendance {
@@ -57,6 +63,7 @@ export interface Feedback {
   updatedAt: string;
   user?: User;
   event?: Event;
+  extraResponses?: Record<string, string | boolean>;
 }
 
 export interface QRToken {

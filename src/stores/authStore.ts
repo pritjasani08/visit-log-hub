@@ -116,6 +116,8 @@ export const useAuthStore = create<AuthStore>()(
     }),
     {
       name: 'intrack-auth',
+      // Only persist selectedRole to avoid auto-login on refresh/dev start
+      partialize: (state) => ({ selectedRole: state.selectedRole }),
     }
   )
 );

@@ -104,13 +104,19 @@ const QRScanner = () => {
         });
         
         // Navigate to feedback form
-        setTimeout(() => {
-          navigate('/student/feedback/new');
-        }, 1500);
+        // Try to extract eventId and forward to event-specific feedback
+        try {
+          const parsed = JSON.parse(qrCode);
+          if (parsed?.eventId) {
+            setTimeout(() => navigate(`/student/feedback/${parsed.eventId}`), 1200);
+            return;
+          }
+        } catch {}
+        setTimeout(() => navigate('/student/feedback/new'), 1200);
       } else {
         toast({
-          title: 'Check-in failed',
-          description: 'Invalid QR code or you are outside the event location.',
+          title: 'Outside allowed location or time',
+          description: 'You are not within the set location radius or session is not active.',
           variant: 'destructive',
         });
       }

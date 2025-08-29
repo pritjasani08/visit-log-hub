@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useEventStore } from '@/stores/eventStore';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 const feedbackSchema = z.object({
   starsContent: z.number().min(1, 'Please rate the content').max(5),
@@ -26,9 +26,10 @@ type FeedbackFormData = z.infer<typeof feedbackSchema>;
 const FeedbackForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const { submitFeedback } = useEventStore();
+  const { submitFeedback, events } = useEventStore();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { eventId } = useParams();
 
   const {
     register,
@@ -89,7 +90,7 @@ const FeedbackForm = () => {
     setIsSubmitting(true);
     try {
       const success = await submitFeedback({
-        eventId: '1', // In real app, this would come from props/params
+        eventId: eventId || '1',
         ...data,
       });
 
@@ -141,6 +142,8 @@ const FeedbackForm = () => {
     );
   }
 
+  const event = events.find(e => e.id === (eventId || '')) || events[0];
+
   return (
     <div className="min-h-screen bg-gradient-surface">
       <div className="max-w-2xl mx-auto px-4 py-8">
@@ -161,8 +164,8 @@ const FeedbackForm = () => {
 
         <Card className="border-0 shadow-large">
           <CardHeader>
-            <CardTitle>Tech Innovation Workshop</CardTitle>
-            <CardDescription>TechCorp Solutions - Please rate your experience</CardDescription>
+            <CardTitle>{event?.title || 'Session Feedback'}</CardTitle>
+            <CardDescription>{event?.companyName || ''} - Please rate your experience</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">

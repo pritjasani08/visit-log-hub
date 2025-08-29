@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { RefreshCw, Download, Maximize2, Users, Clock, ArrowLeft, Copy } from 'lucide-react';
+import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -134,10 +135,23 @@ const QRGenerator = () => {
   const downloadQR = () => {
     if (canvasRef.current) {
       const link = document.createElement('a');
-      link.download = `qr-${event?.title || 'event'}-${Date.now()}.png`;
-      link.href = canvasRef.current.toDataURL();
+      link.download = `qr-${event?.title || 'event'}-${Date.now()}.jpg`;
+      link.href = canvasRef.current.toDataURL('image/jpeg', 0.95);
       link.click();
     }
+  };
+
+  const downloadPDF = () => {
+    if (!canvasRef.current) return;
+    const imgData = canvasRef.current.toDataURL('imagePNG');
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const margin = 40;
+    const qrSize = pageWidth - margin * 2;
+    pdf.setFontSize(18);
+    pdf.text(event?.title || 'Event QR', margin, 40);
+    pdf.addImage(imgData, 'PNG', margin, 60, qrSize, qrSize);
+    pdf.save(`qr-${event?.title || 'event'}.pdf`);
   };
 
   const copySessionCode = () => {
@@ -250,7 +264,15 @@ const QRGenerator = () => {
                       size="sm"
                     >
                       <Download className="h-4 w-4 mr-2" />
-                      Download
+                      Download JPEG
+                    </Button>
+                    <Button
+                      onClick={downloadPDF}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download PDF
                     </Button>
                     <Button
                       onClick={toggleFullscreen}

@@ -208,7 +208,7 @@ const AdminDashboard = () => {
                 <CardTitle>Recent Events</CardTitle>
                 <CardDescription>Manage your latest events and sessions</CardDescription>
               </div>
-              <Button variant="outline" onClick={() => navigate('/admin/events')}>
+              <Button variant="outline" onClick={() => navigate('/admin')}>
                 View All
               </Button>
             </div>
