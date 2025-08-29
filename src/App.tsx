@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,6 +11,8 @@ import RoleGate from "@/components/RoleGate";
 import LoginForm from "@/components/auth/LoginForm";
 import RegisterForm from "@/components/auth/RegisterForm";
 import StudentHome from "@/components/student/StudentHome";
+import StudentEvents from "@/components/student/StudentEvents";
+import StudentAttendance from "@/components/student/StudentAttendance";
 import QRScanner from "@/components/student/QRScanner";
 import FeedbackForm from "@/components/student/FeedbackForm";
 import AdminDashboard from "@/components/admin/AdminDashboard";
@@ -68,6 +71,22 @@ const App = () => {
               } 
             />
             <Route 
+              path="/student/events" 
+              element={
+                <ProtectedRoute allowedRoles={['STUDENT']}>
+                  <StudentEvents />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/student/attendance" 
+              element={
+                <ProtectedRoute allowedRoles={['STUDENT']}>
+                  <StudentAttendance />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path="/student/scan" 
               element={
                 <ProtectedRoute allowedRoles={['STUDENT']}>
@@ -77,6 +96,14 @@ const App = () => {
             />
             <Route 
               path="/student/feedback/new" 
+              element={
+                <ProtectedRoute allowedRoles={['STUDENT']}>
+                  <FeedbackForm />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/student/feedback/:eventId" 
               element={
                 <ProtectedRoute allowedRoles={['STUDENT']}>
                   <FeedbackForm />

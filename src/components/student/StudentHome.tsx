@@ -100,18 +100,13 @@ const StudentHome = () => {
             </CardContent>
           </Card>
 
-          <Card className="group hover:shadow-large transition-all duration-300 border-0 shadow-medium cursor-pointer" onClick={() => navigate('/student/feedback')}>
+          <Card className="group hover:shadow-large transition-all duration-300 border-0 shadow-medium cursor-pointer" onClick={() => navigate('/student/attendance')}>
             <CardContent className="p-6 text-center relative">
               <div className="bg-gradient-to-br from-indigo-500 to-purple-500 p-4 rounded-2xl w-fit mx-auto mb-4 group-hover:shadow-glow transition-all duration-300">
                 <ClipboardCheck className="h-8 w-8 text-white" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">Pending Feedback</h3>
-              <p className="text-muted-foreground text-sm">Complete your reviews</p>
-              {pendingFeedback > 0 && (
-                <Badge className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground">
-                  {pendingFeedback}
-                </Badge>
-              )}
+              <h3 className="text-lg font-semibold mb-2">My Attendance</h3>
+              <p className="text-muted-foreground text-sm">View attendance history</p>
             </CardContent>
           </Card>
         </div>

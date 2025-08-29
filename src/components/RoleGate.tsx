@@ -1,3 +1,4 @@
+
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -9,10 +10,17 @@ import {
   Users
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
+import { useNavigate } from 'react-router-dom';
 import { Role } from '@/types';
 
 const RoleGate = () => {
   const { selectRole } = useAuthStore();
+  const navigate = useNavigate();
+
+  const handleRoleSelection = (role: Role) => {
+    selectRole(role);
+    navigate('/login');
+  };
 
   const roles = [
     {
@@ -86,7 +94,7 @@ const RoleGate = () => {
                   </div>
                   
                   <Button 
-                    onClick={() => selectRole(role.type)}
+                    onClick={() => handleRoleSelection(role.type)}
                     className="w-full bg-gradient-to-r from-primary to-primary-glow hover:from-primary-glow hover:to-primary transition-all duration-300 text-white border-0 shadow-medium hover:shadow-large"
                   >
                     Continue as {role.title.replace("I'm a ", "")}
