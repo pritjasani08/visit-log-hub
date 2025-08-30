@@ -3,24 +3,27 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+
+// Debug: Log environment variables
+console.log('Environment variables loaded:');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('PORT:', process.env.PORT);
+console.log('MONGODB_URI:', process.env.MONGODB_URI);
 
 const connectDB = require('./config/database');
 const authRoutes = require('./routes/auth');
-const userRoutes = require('./routes/users');
 const visitRoutes = require('./routes/visits');
-const attendanceRoutes = require('./routes/attendance');
-const feedbackRoutes = require('./routes/feedback');
-const qrRoutes = require('./routes/qr');
-const adminRoutes = require('./routes/admin');
+const qrDemoRoutes = require('./routes/qrDemo');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8085;
 
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: process.env.FRONTEND_URL || 'http://localhost:8083',
   credentials: true
 }));
 
@@ -35,6 +38,9 @@ app.use('/api/', limiter);
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Serve static files
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Logging middleware
 if (process.env.NODE_ENV === 'development') {
@@ -53,12 +59,8 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
 app.use('/api/visits', visitRoutes);
-app.use('/api/attendance', attendanceRoutes);
-app.use('/api/feedback', feedbackRoutes);
-app.use('/api/qr', qrRoutes);
-app.use('/api/admin', adminRoutes);
+app.use('/api/qr-demo', qrDemoRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -106,13 +108,60 @@ const startServer = async () => {
     // Connect to database
     await connectDB();
     
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`🚀 InTrack Backend running on port ${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);
     });
+
+    // Handle server errors gracefully
+    server.on('error', (error) => {
+      if (error.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${PORT} is already in use.`);
+        console.log(`💡 Try one of these solutions:`);
+        console.log(`   1. Kill the process using port ${PORT}: netstat -ano | findstr :${PORT}`);
+        console.log(`   2. Use a different port by setting PORT environment variable`);
+        console.log(`   3. Wait a few seconds and try again`);
+        
+        // Try alternative port
+        const alternativePort = PORT + 1;
+        console.log(`🔄 Attempting to use port ${alternativePort}...`);
+        
+        const altServer = app.listen(alternativePort, () => {
+          console.log(`🚀 InTrack Backend running on port ${alternativePort}`);
+          console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+          console.log(`🔗 Health check: http://localhost:${alternativePort}/health`);
+        });
+        
+        altServer.on('error', (altError) => {
+          console.error(`❌ Failed to start on alternative port ${alternativePort}:`, altError.message);
+          process.exit(1);
+        });
+      } else {
+        console.error('❌ Server error:', error);
+        process.exit(1);
+      }
+    });
+
+    // Handle graceful shutdown
+    process.on('SIGTERM', () => {
+      console.log('🛑 SIGTERM received, shutting down gracefully');
+      server.close(() => {
+        console.log('✅ Server closed');
+        process.exit(0);
+      });
+    });
+
+    process.on('SIGINT', () => {
+      console.log('🛑 SIGINT received, shutting down gracefully');
+      server.close(() => {
+        console.log('✅ Server closed');
+        process.exit(0);
+      });
+    });
+
   } catch (error) {
-    console.error('Failed to start server:', error);
+    console.error('❌ Failed to start server:', error);
     process.exit(1);
   }
 };

@@ -157,16 +157,53 @@ industrialVisitSchema.virtual('isCurrentlyActive').get(function() {
 // Method to generate QR token
 industrialVisitSchema.methods.generateQRToken = function() {
   const crypto = require('crypto');
-  const token = crypto.randomBytes(32).toString('hex');
+  
+  // Create multiple layers of uniqueness
+  const timestamp = Date.now();
+  const randomBytes = crypto.randomBytes(16).toString('hex');
+  const visitId = this._id.toString();
+  const studentId = this.studentId.toString();
+  
+  // Combine all unique elements
+  const uniqueString = `${timestamp}-${randomBytes}-${visitId}-${studentId}`;
+  
+  // Generate hash for final token
+  const token = crypto.createHash('sha256').update(uniqueString).digest('hex');
+  
+  // Create QR data with multiple unique identifiers
+  const qrData = {
+    token: token,
+    visitId: visitId,
+    studentId: studentId,
+    timestamp: timestamp,
+    randomId: randomBytes,
+    companyName: this.companyName,
+    visitDate: this.visitDate,
+    purpose: this.purpose,
+    uniqueHash: crypto.createHash('md5').update(`${token}-${timestamp}`).digest('hex').substring(0, 8)
+  };
+  
   const expiresAt = new Date(Date.now() + (process.env.QR_EXPIRE_MINUTES || 15) * 60 * 1000);
   
   this.qrCode = {
-    token,
-    expiresAt,
-    isActive: true
+    token: token,
+    qrData: qrData,
+    expiresAt: expiresAt,
+    isActive: true,
+    generatedAt: new Date(),
+    uniqueId: `${visitId}-${timestamp}-${randomBytes.substring(0, 8)}`
   };
   
   return token;
+};
+
+// Method to regenerate QR token (creates completely new unique code)
+industrialVisitSchema.methods.regenerateQRToken = function() {
+  // Clear previous QR data
+  this.qrCode = {};
+  
+  // Generate new unique token
+  return this.generateQRToken();
 };
 
 // Method to check if QR is valid
@@ -191,9 +228,15 @@ industrialVisitSchema.methods.updateStatus = function() {
   return this.status;
 };
 
-// Pre-save middleware to update status
+// Pre-save middleware to update status and generate QR code
 industrialVisitSchema.pre('save', function(next) {
   this.updateStatus();
+  
+  // Auto-generate QR code for new visits
+  if (this.isNew && !this.qrCode.token) {
+    this.generateQRToken();
+  }
+  
   next();
 });
 

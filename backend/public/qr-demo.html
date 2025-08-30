@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InTrack QR Code Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1F2937 0%, #374151 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            padding: 25px;
+            border-radius: 15px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+        }
+
+        .section h2 {
+            color: #1F2937;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+            border-bottom: 3px solid #3B82F6;
+            padding-bottom: 10px;
+        }
+
+        .qr-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .qr-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.2s;
+        }
+
+        .qr-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .qr-card h3 {
+            color: #374151;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .qr-image {
+            max-width: 200px;
+            height: auto;
+            margin: 15px auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .btn {
+            background: #3B82F6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 10px 5px;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: #2563EB;
+        }
+
+        .btn-secondary {
+            background: #6B7280;
+        }
+
+        .btn-secondary:hover {
+            background: #4B5563;
+        }
+
+        .btn-success {
+            background: #10B981;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #3B82F6;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+        }
+
+        .error {
+            background: #fef2f2;
+            border-color: #fecaca;
+            color: #dc2626;
+        }
+
+        .success {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+            color: #16a34a;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6B7280;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3B82F6;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .style-preview {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+
+        .style-option {
+            padding: 8px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .style-option:hover, .style-option.active {
+            border-color: #3B82F6;
+            background: #3B82F6;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 InTrack QR Code Generator</h1>
+            <p>Generate different types of QR codes with various styles and customization options</p>
+        </div>
+
+        <div class="content">
+            <!-- QR Code Styles Section -->
+            <div class="section">
+                <h2>🎨 Available QR Code Styles</h2>
+                <div class="style-preview">
+                    <div class="style-option active" data-style="default">Default</div>
+                    <div class="style-option" data-style="rounded">Rounded</div>
+                    <div class="style-option" data-style="gradient">Gradient</div>
+                    <div class="style-option" data-style="corporate">Corporate</div>
+                    <div class="style-option" data-style="dark">Dark</div>
+                    <div class="style-option" data-style="colorful">Colorful</div>
+                </div>
+                <button class="btn btn-success" onclick="loadStyles()">Load Available Styles</button>
+                <div id="stylesResult"></div>
+            </div>
+
+            <!-- Custom QR Generator Section -->
+            <div class="section">
+                <h2>⚡ Custom QR Code Generator</h2>
+                <div class="form-group">
+                    <label for="customData">Data to Encode:</label>
+                    <textarea id="customData" rows="3" placeholder='{"message": "Hello World", "timestamp": "2024-01-01"}'></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="customStyle">Style:</label>
+                    <select id="customStyle">
+                        <option value="default">Default</option>
+                        <option value="rounded">Rounded</option>
+                        <option value="gradient">Gradient</option>
+                        <option value="corporate">Corporate</option>
+                        <option value="dark">Dark</option>
+                        <option value="colorful">Colorful</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="generateCustomQR()">Generate Custom QR</button>
+                <div id="customResult"></div>
+            </div>
+
+            <!-- Typed QR Generator Section -->
+            <div class="section">
+                <h2>🏷️ Typed QR Code Generator</h2>
+                <div class="form-group">
+                    <label for="qrType">QR Code Type:</label>
+                    <select id="qrType" onchange="updateTypeForm()">
+                        <option value="attendance">Attendance</option>
+                        <option value="feedback">Feedback</option>
+                        <option value="event">Event</option>
+                        <option value="company">Company</option>
+                        <option value="student">Student</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+                <div id="typeForm"></div>
+                <button class="btn" onclick="generateTypedQR()">Generate Typed QR</button>
+                <div id="typedResult"></div>
+            </div>
+
+            <!-- Multiple Styles Section -->
+            <div class="section">
+                <h2>🌈 Generate All Styles</h2>
+                <div class="form-group">
+                    <label for="multiData">Data to Encode:</label>
+                    <textarea id="multiData" rows="2" placeholder='{"message": "Generate all styles"}'></textarea>
+                </div>
+                <button class="btn btn-secondary" onclick="generateAllStyles()">Generate All Styles</button>
+                <div id="multiResult"></div>
+            </div>
+
+            <!-- QR Validation Section -->
+            <div class="section">
+                <h2>✅ QR Code Validation</h2>
+                <div class="form-group">
+                    <label for="validationData">QR Data to Validate:</label>
+                    <textarea id="validationData" rows="4" placeholder='{"type": "attendance", "timestamp": "2024-01-01T00:00:00.000Z"}'></textarea>
+                </div>
+                <button class="btn btn-secondary" onclick="validateQR()">Validate QR Data</button>
+                <div id="validationResult"></div>
+            </div>
+
+            <!-- Examples Section -->
+            <div class="section">
+                <h2>📚 Examples & Templates</h2>
+                <button class="btn btn-secondary" onclick="loadExamples()">Load Examples</button>
+                <div id="examplesResult"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8085/api/qr-demo';
+
+        // Style selection
+        document.querySelectorAll('.style-option').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.style-option').forEach(opt => opt.classList.remove('active'));
+                this.classList.add('active');
+                document.getElementById('customStyle').value = this.dataset.style;
+            });
+        });
+
+        // Update form based on QR type
+        function updateTypeForm() {
+            const type = document.getElementById('qrType').value;
+            const formDiv = document.getElementById('typeForm');
+            
+            const forms = {
+                attendance: `
+                    <div class="form-group">
+                        <label>Visit ID:</label>
+                        <input type="text" id="visitId" value="visit_123">
+                    </div>
+                    <div class="form-group">
+                        <label>Student ID:</label>
+                        <input type="text" id="studentId" value="student_456">
+                    </div>
+                    <div class="form-group">
+                        <label>Location:</label>
+                        <input type="text" id="location" value="Main Building">
+                    </div>
+                `,
+                feedback: `
+                    <div class="form-group">
+                        <label>Visit ID:</label>
+                        <input type="text" id="visitId" value="visit_123">
+                    </div>
+                    <div class="form-group">
+                        <label>Student ID:</label>
+                        <input type="text" id="studentId" value="student_456">
+                    </div>
+                    <div class="form-group">
+                        <label>Feedback Type:</label>
+                        <select id="feedbackType">
+                            <option value="company_visit">Company Visit</option>
+                            <option value="general">General</option>
+                            <option value="technical">Technical</option>
+                        </select>
+                    </div>
+                `,
+                event: `
+                    <div class="form-group">
+                        <label>Event ID:</label>
+                        <input type="text" id="eventId" value="event_789">
+                    </div>
+                    <div class="form-group">
+                        <label>Event Name:</label>
+                        <input type="text" id="eventName" value="Industrial Visit to Tech Corp">
+                    </div>
+                    <div class="form-group">
+                        <label>Date:</label>
+                        <input type="date" id="date" value="2024-01-15">
+                    </div>
+                    <div class="form-group">
+                        <label>Location:</label>
+                        <input type="text" id="location" value="Tech Corp HQ">
+                    </div>
+                `,
+                company: `
+                    <div class="form-group">
+                        <label>Company ID:</label>
+                        <input type="text" id="companyId" value="company_101">
+                    </div>
+                    <div class="form-group">
+                        <label>Company Name:</label>
+                        <input type="text" id="companyName" value="Tech Corp">
+                    </div>
+                    <div class="form-group">
+                        <label>Purpose:</label>
+                        <input type="text" id="purpose" value="Industrial Visit">
+                    </div>
+                `,
+                student: `
+                    <div class="form-group">
+                        <label>Student ID:</label>
+                        <input type="text" id="studentId" value="student_456">
+                    </div>
+                    <div class="form-group">
+                        <label>Student Name:</label>
+                        <input type="text" id="studentName" value="John Doe">
+                    </div>
+                    <div class="form-group">
+                        <label>Roll Number:</label>
+                        <input type="text" id="rollNumber" value="CS2024001">
+                    </div>
+                `,
+                custom: `
+                    <div class="form-group">
+                        <label>Custom Data:</label>
+                        <textarea id="customTypeData" rows="3" placeholder='{"message": "Custom data"}'></textarea>
+                    </div>
+                `
+            };
+
+            formDiv.innerHTML = forms[type] || '';
+        }
+
+        // Load available styles
+        async function loadStyles() {
+            try {
+                const response = await fetch(`${API_BASE}/styles`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const stylesHtml = data.styles.map(style => `
+                        <div class="qr-card">
+                            <h3>${style.name}</h3>
+                            <p>${style.description}</p>
+                            <div style="background: ${style.colors.light}; padding: 10px; border-radius: 8px;">
+                                <div style="color: ${style.colors.dark}; font-weight: bold;">Sample QR</div>
+                            </div>
+                        </div>
+                    `).join('');
+                    
+                    document.getElementById('stylesResult').innerHTML = `
+                        <div class="success">
+                            <h3>Available Styles (${data.totalStyles})</h3>
+                            <div class="qr-grid">${stylesHtml}</div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('stylesResult').innerHTML = `
+                    <div class="error">Error loading styles: ${error.message}</div>
+                `;
+            }
+        }
+
+        // Generate custom QR code
+        async function generateCustomQR() {
+            const data = document.getElementById('customData').value;
+            const style = document.getElementById('customStyle').value;
+            
+            if (!data) {
+                alert('Please enter data to encode');
+                return;
+            }
+
+            try {
+                document.getElementById('customResult').innerHTML = '<div class="loading"><div class="spinner"></div>Generating QR code...</div>';
+                
+                const response = await fetch(`${API_BASE}/generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data: JSON.parse(data), style })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('customResult').innerHTML = `
+                        <div class="success">
+                            <h3>Custom QR Code Generated!</h3>
+                            <img src="${result.qrCode.qrImageUrl}" alt="Custom QR Code" class="qr-image">
+                            <p><strong>Style:</strong> ${result.qrCode.style}</p>
+                            <p><strong>Data:</strong> ${JSON.stringify(result.qrCode.options, null, 2)}</p>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('customResult').innerHTML = `
+                        <div class="error">Error: ${result.message}</div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('customResult').innerHTML = `
+                    <div class="error">Error: ${error.message}</div>
+                `;
+            }
+        }
+
+        // Generate typed QR code
+        async function generateTypedQR() {
+            const type = document.getElementById('qrType').value;
+            let data = {};
+            
+            // Collect form data based on type
+            switch (type) {
+                case 'attendance':
+                    data = {
+                        visitId: document.getElementById('visitId').value,
+                        studentId: document.getElementById('studentId').value,
+                        location: document.getElementById('location').value
+                    };
+                    break;
+                case 'feedback':
+                    data = {
+                        visitId: document.getElementById('visitId').value,
+                        studentId: document.getElementById('studentId').value,
+                        feedbackType: document.getElementById('feedbackType').value
+                    };
+                    break;
+                case 'event':
+                    data = {
+                        eventId: document.getElementById('eventId').value,
+                        eventName: document.getElementById('eventName').value,
+                        date: document.getElementById('date').value,
+                        location: document.getElementById('location').value
+                    };
+                    break;
+                case 'company':
+                    data = {
+                        companyId: document.getElementById('companyId').value,
+                        companyName: document.getElementById('companyName').value,
+                        purpose: document.getElementById('purpose').value
+                    };
+                    break;
+                case 'student':
+                    data = {
+                        studentId: document.getElementById('studentId').value,
+                        studentName: document.getElementById('studentName').value,
+                        rollNumber: document.getElementById('rollNumber').value
+                    };
+                    break;
+                case 'custom':
+                    data = JSON.parse(document.getElementById('customTypeData').value || '{"message": "Custom data"}');
+                    break;
+            }
+
+            try {
+                document.getElementById('typedResult').innerHTML = '<div class="loading"><div class="spinner"></div>Generating typed QR code...</div>';
+                
+                const response = await fetch(`${API_BASE}/generate-type`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type, data })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('typedResult').innerHTML = `
+                        <div class="success">
+                            <h3>${type.charAt(0).toUpperCase() + type.slice(1)} QR Code Generated!</h3>
+                            <img src="${result.qrCode.qrImageUrl}" alt="${type} QR Code" class="qr-image">
+                            <p><strong>Type:</strong> ${type}</p>
+                            <p><strong>Style:</strong> ${result.qrCode.style}</p>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('typedResult').innerHTML = `
+                        <div class="error">Error: ${result.message}</div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('typedResult').innerHTML = `
+                    <div class="error">Error: ${error.message}</div>
+                `;
+            }
+        }
+
+        // Generate all styles
+        async function generateAllStyles() {
+            const data = document.getElementById('multiData').value;
+            
+            if (!data) {
+                alert('Please enter data to encode');
+                return;
+            }
+
+            try {
+                document.getElementById('multiResult').innerHTML = '<div class="loading"><div class="spinner"></div>Generating all styles...</div>';
+                
+                const response = await fetch(`${API_BASE}/generate-all-styles`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data: JSON.parse(data) })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const stylesHtml = Object.entries(result.results.styles).map(([style, qrCode]) => `
+                        <div class="qr-card">
+                            <h3>${style}</h3>
+                            <img src="${qrCode.qrImageUrl}" alt="${style} QR Code" class="qr-image">
+                        </div>
+                    `).join('');
+                    
+                    document.getElementById('multiResult').innerHTML = `
+                        <div class="success">
+                            <h3>All Styles Generated! (${result.results.totalStyles})</h3>
+                            <div class="qr-grid">${stylesHtml}</div>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('multiResult').innerHTML = `
+                        <div class="error">Error: ${result.message}</div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('multiResult').innerHTML = `
+                    <div class="error">Error: ${error.message}</div>
+                `;
+            }
+        }
+
+        // Validate QR data
+        async function validateQR() {
+            const qrData = document.getElementById('validationData').value;
+            
+            if (!qrData) {
+                alert('Please enter QR data to validate');
+                return;
+            }
+
+            try {
+                document.getElementById('validationResult').innerHTML = '<div class="loading"><div class="spinner"></div>Validating...</div>';
+                
+                const response = await fetch(`${API_BASE}/validate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ qrData: JSON.parse(qrData) })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const validation = result.validation;
+                    const statusClass = validation.valid ? 'success' : 'error';
+                    
+                    document.getElementById('validationResult').innerHTML = `
+                        <div class="${statusClass}">
+                            <h3>Validation Result</h3>
+                            <p><strong>Status:</strong> ${validation.valid ? 'Valid' : 'Invalid'}</p>
+                            <p><strong>Message:</strong> ${validation.message}</p>
+                            ${validation.age ? `<p><strong>Age:</strong> ${validation.age}</p>` : ''}
+                            ${validation.missingFields ? `<p><strong>Missing Fields:</strong> ${validation.missingFields.join(', ')}</p>` : ''}
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('validationResult').innerHTML = `
+                        <div class="error">Error: ${result.message}</div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('validationResult').innerHTML = `
+                    <div class="error">Error: ${error.message}</div>
+                `;
+            }
+        }
+
+        // Load examples
+        async function loadExamples() {
+            try {
+                const response = await fetch(`${API_BASE}/examples`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const examplesHtml = Object.entries(data.examples).map(([type, example]) => `
+                        <div class="qr-card">
+                            <h3>${type.charAt(0).toUpperCase() + type.slice(1)}</h3>
+                            <pre style="text-align: left; background: #f1f5f9; padding: 10px; border-radius: 5px; font-size: 0.8rem; overflow-x: auto;">${JSON.stringify(example, null, 2)}</pre>
+                        </div>
+                    `).join('');
+                    
+                    document.getElementById('examplesResult').innerHTML = `
+                        <div class="success">
+                            <h3>Example Data Templates</h3>
+                            <p>${data.message}</p>
+                            <div class="qr-grid">${examplesHtml}</div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('examplesResult').innerHTML = `
+                    <div class="error">Error loading examples: ${error.message}</div>
+                `;
+            }
+        }
+
+        // Initialize the form
+        updateTypeForm();
+    </script>
+</body>
+</html>

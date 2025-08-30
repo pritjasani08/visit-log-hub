@@ -2,6 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const IndustrialVisit = require('../models/IndustrialVisit');
 const { auth, authorizeStudent, authorizeCompanyOrAdmin } = require('../middleware/auth');
+const { generateEnhancedQR, generateNewUniqueQR } = require('../lib/qrGenerator');
 
 const router = express.Router();
 
@@ -59,8 +60,12 @@ router.post('/', [
       extraQuestions
     });
 
-    // Generate QR token
+    // Generate unique QR token with enhanced data
     const qrToken = visit.generateQRToken();
+    
+    // Add additional uniqueness to QR data
+    visit.qrCode.qrData.visitNumber = `VISIT-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    visit.qrCode.qrData.sessionId = `SESSION-${visit._id.toString().substring(0, 8)}-${Date.now()}`;
 
     await visit.save();
 
@@ -339,16 +344,25 @@ router.post('/:id/regenerate-qr', [auth, authorizeStudent], async (req, res) => 
       });
     }
 
-    // Generate new QR token
-    const qrToken = visit.generateQRToken();
+    // Generate completely new unique QR token
+    const qrToken = visit.regenerateQRToken();
+    
+    // Add new unique identifiers
+    visit.qrCode.qrData.visitNumber = `VISIT-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    visit.qrCode.qrData.sessionId = `SESSION-${visit._id.toString().substring(0, 8)}-${Date.now()}`;
+    visit.qrCode.qrData.regeneratedAt = new Date().toISOString();
+    visit.qrCode.qrData.regenerationCount = (visit.qrCode.qrData.regenerationCount || 0) + 1;
+    
     await visit.save();
 
     res.json({
       success: true,
-      message: 'QR code regenerated successfully',
+      message: 'QR code regenerated successfully with new unique data',
       data: {
         qrCode: visit.qrCode,
-        qrToken
+        qrToken,
+        newVisitNumber: visit.qrCode.qrData.visitNumber,
+        newSessionId: visit.qrCode.qrData.sessionId
       }
     });
 
@@ -357,6 +371,183 @@ router.post('/:id/regenerate-qr', [auth, authorizeStudent], async (req, res) => 
     res.status(500).json({
       success: false,
       message: 'Server error while regenerating QR code'
+    });
+  }
+});
+
+// @route   POST /api/visits/:id/refresh-qr
+// @desc    Refresh QR code data while keeping same token (for real-time updates)
+// @access  Private (Visit owner only)
+router.post('/:id/refresh-qr', [auth, authorizeStudent], async (req, res) => {
+  try {
+    const visit = await IndustrialVisit.findById(req.params.id);
+
+    if (!visit) {
+      return res.status(404).json({
+        success: false,
+        message: 'Visit not found'
+      });
+    }
+
+    // Check if user owns this visit
+    if (visit.studentId.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied to this visit'
+      });
+    }
+
+    // Update QR data with fresh timestamps and unique elements
+    const currentTime = Date.now();
+    visit.qrCode.qrData.lastRefreshed = currentTime;
+    visit.qrCode.qrData.refreshCount = (visit.qrCode.qrData.refreshCount || 0) + 1;
+    visit.qrCode.qrData.currentSession = `REFRESH-${currentTime}-${Math.random().toString(36).substring(2, 6)}`;
+    
+    await visit.save();
+
+    res.json({
+      success: true,
+      message: 'QR code data refreshed successfully',
+      data: {
+        qrCode: visit.qrCode,
+        lastRefreshed: visit.qrCode.qrData.lastRefreshed,
+        refreshCount: visit.qrCode.qrData.refreshCount,
+        currentSession: visit.qrCode.qrData.currentSession
+      }
+    });
+
+  } catch (error) {
+    console.error('Refresh QR error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while refreshing QR code'
+    });
+  }
+});
+
+// @route   POST /api/visits/:id/enhanced-qr
+// @desc    Generate enhanced QR code with maximum uniqueness
+// @access  Private (Visit owner only)
+router.post('/:id/enhanced-qr', [auth, authorizeStudent], async (req, res) => {
+  try {
+    const visit = await IndustrialVisit.findById(req.params.id);
+
+    if (!visit) {
+      return res.status(404).json({
+        success: false,
+        message: 'Visit not found'
+      });
+    }
+
+    // Check if user owns this visit
+    if (visit.studentId.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied to this visit'
+      });
+    }
+
+    // Generate enhanced QR code
+    const enhancedQR = await generateEnhancedQR(visit, visit.qrCode);
+    
+    if (!enhancedQR.success) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to generate enhanced QR code'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Enhanced QR code generated successfully',
+      data: {
+        qrImageUrl: enhancedQR.qrImageUrl,
+        qrSvg: enhancedQR.qrSvg,
+        enhancedData: enhancedQR.enhancedData,
+        uniqueness: enhancedQR.uniqueness,
+        visitInfo: {
+          companyName: visit.companyName,
+          visitDate: visit.visitDate,
+          purpose: visit.purpose,
+          status: visit.status
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Enhanced QR generation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while generating enhanced QR code'
+    });
+  }
+});
+
+// @route   POST /api/visits/:id/super-unique-qr
+// @desc    Generate completely new super unique QR code
+// @access  Private (Visit owner only)
+router.post('/:id/super-unique-qr', [auth, authorizeStudent], async (req, res) => {
+  try {
+    const visit = await IndustrialVisit.findById(req.params.id);
+
+    if (!visit) {
+      return res.status(404).json({
+        success: false,
+        message: 'Visit not found'
+      });
+    }
+
+    // Check if user owns this visit
+    if (visit.studentId.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied to this visit'
+      });
+    }
+
+    // Generate completely new unique QR
+    const newUniqueQR = await generateNewUniqueQR(visit);
+    
+    if (!newUniqueQR.success) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to generate new unique QR code'
+      });
+    }
+
+    // Update visit with new QR data
+    visit.qrCode = {
+      token: newUniqueQR.newToken,
+      qrData: newUniqueQR.newQRData,
+      expiresAt: new Date(Date.now() + (process.env.QR_EXPIRE_MINUTES || 15) * 60 * 1000),
+      isActive: true,
+      generatedAt: new Date(),
+      uniqueId: `${visit._id.toString()}-${Date.now()}-${newUniqueQR.newQRData.randomId.substring(0, 8)}`
+    };
+
+    await visit.save();
+
+    res.json({
+      success: true,
+      message: 'Super unique QR code generated successfully',
+      data: {
+        newToken: newUniqueQR.newToken,
+        newQRData: newUniqueQR.newQRData,
+        uniqueness: newUniqueQR.uniqueness,
+        visitInfo: {
+          companyName: visit.companyName,
+          visitDate: visit.visitDate,
+          purpose: visit.purpose,
+          status: visit.status
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Super unique QR generation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while generating super unique QR code'
     });
   }
 });
