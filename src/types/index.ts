@@ -18,6 +18,8 @@ export interface IndustrialVisit {
   purpose: string;
   startTime: string;
   endTime: string;
+  location: string;
+  companyAddress?: string;
   qrCode: string;
   createdAt: string;
   updatedAt: string;

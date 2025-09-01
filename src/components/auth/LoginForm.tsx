@@ -22,32 +22,13 @@ type LoginFormData = z.infer<typeof loginSchema>;
 const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [backendStatus, setBackendStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+
   const { selectedRole, clearStorage } = useAuthStore();
   const { toast } = useToast();
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Test backend connection on component mount
-  useEffect(() => {
-    const testBackendConnection = async () => {
-      try {
-        const response = await fetch('http://localhost:5000/health');
-        if (response.ok) {
-          console.log('✅ Backend is running');
-          setBackendStatus('connected');
-        } else {
-          console.log('❌ Backend responded with error:', response.status);
-          setBackendStatus('disconnected');
-        }
-      } catch (error) {
-        console.log('❌ Cannot connect to backend:', error.message);
-        setBackendStatus('disconnected');
-      }
-    };
 
-    testBackendConnection();
-  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -214,39 +195,30 @@ const LoginForm = () => {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    if (backendStatus !== 'connected') {
-      toast({
-        title: 'Backend Not Connected',
-        description: 'Please make sure the backend server is running on port 5000.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     setIsLoading(true);
+    
     try {
-      console.log('Attempting to login with:', data.email);
+      // Check if user exists in localStorage (from registration)
+      const existingUsers = localStorage.getItem('registeredUsers');
+      let users = existingUsers ? JSON.parse(existingUsers) : [];
       
-      // Connect to real backend API
-      const response = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: data.email,
-          password: data.password,
-        }),
-      });
-
-      console.log('Response status:', response.status);
-      const result = await response.json();
-      console.log('Response data:', result);
-
-      if (response.ok && result.success) {
-        // Store the token and user data
-        localStorage.setItem('token', result.data.token);
-        localStorage.setItem('user', JSON.stringify(result.data.user));
+      // If no users array exists, check if there's a single user
+      if (users.length === 0) {
+        const singleUser = localStorage.getItem('user');
+        if (singleUser) {
+          users = [JSON.parse(singleUser)];
+        }
+      }
+      
+      // Find user with matching email and password
+      const user = users.find((u: any) => 
+        u.email === data.email && u.password === data.password
+      );
+      
+      if (user) {
+        // Login successful
+        localStorage.setItem('token', 'demo-token-123');
+        localStorage.setItem('user', JSON.stringify(user));
         
         toast({
           title: 'Welcome back!',
@@ -254,37 +226,66 @@ const LoginForm = () => {
         });
         
         // Redirect based on role
-        if (result.data.user.role === 'STUDENT') {
+        if (user.role === 'STUDENT') {
           navigate('/student');
-        } else if (result.data.user.role === 'ADMIN') {
+        } else if (user.role === 'ADMIN') {
           navigate('/admin');
-        } else if (result.data.user.role === 'COMPANY') {
+        } else if (user.role === 'COMPANY') {
           navigate('/company');
         }
       } else {
-        toast({
-          title: 'Login failed',
-          description: result.message || 'Invalid email or password. Please try again.',
-          variant: 'destructive',
-        });
+        // Check demo credentials as fallback
+        const demoCredentials = {
+          STUDENT: { email: 'student@intrack.app', password: 'Student@123' },
+          ADMIN: { email: 'admin@intrack.app', password: 'Admin@123' },
+          COMPANY: { email: 'company@intrack.app', password: 'Company@123' },
+        };
+
+        const roleCreds = selectedRole ? demoCredentials[selectedRole] : null;
+        
+        if (roleCreds && data.email === roleCreds.email && data.password === roleCreds.password) {
+          // Demo login successful
+          const mockUser = {
+            id: '1',
+            email: data.email,
+            firstName: selectedRole === 'STUDENT' ? 'Demo' : selectedRole === 'ADMIN' ? 'Admin' : 'Company',
+            lastName: 'User',
+            role: selectedRole,
+          };
+
+          localStorage.setItem('token', 'demo-token-123');
+          localStorage.setItem('user', JSON.stringify(mockUser));
+          
+          toast({
+            title: 'Welcome back!',
+            description: 'You have been successfully logged in with demo credentials.',
+          });
+          
+          // Redirect based on role
+          if (selectedRole === 'STUDENT') {
+            navigate('/student');
+          } else if (selectedRole === 'ADMIN') {
+            navigate('/admin');
+          } else if (selectedRole === 'COMPANY') {
+            navigate('/company');
+          }
+        } else {
+          // Login failed
+          toast({
+            title: 'Login failed',
+            description: 'Invalid email or password. Please check your credentials or register first.',
+            variant: 'destructive',
+          });
+        }
       }
+      
     } catch (error) {
       console.error('Login error:', error);
-      
-      // More specific error messages
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        toast({
-          title: 'Connection Error',
-          description: 'Cannot connect to server. Please make sure the backend is running on port 5000.',
-          variant: 'destructive',
-        });
-      } else {
-        toast({
-          title: 'Error',
-          description: `An unexpected error occurred: ${error.message}`,
-          variant: 'destructive',
-        });
-      }
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -320,18 +321,7 @@ const LoginForm = () => {
             Back to role selection
           </Button>
 
-          {/* Backend Status Indicator */}
-          {backendStatus === 'checking' && (
-            <div className="mb-4 p-3 bg-yellow-100 border border-yellow-300 rounded-lg">
-              <p className="text-sm text-yellow-800">Checking backend connection...</p>
-            </div>
-          )}
-          
-          {backendStatus === 'disconnected' && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded-lg">
-              <p className="text-sm text-red-800">⚠️ Backend not connected. Please start the server on port 5000.</p>
-            </div>
-          )}
+
 
           {/* Enhanced Login Card */}
           <Card className="shadow-2xl border-0 backdrop-blur-enhanced bg-white/90 hover:bg-white/95 transition-all duration-500 transform hover:scale-[1.02]">
@@ -436,7 +426,7 @@ const LoginForm = () => {
                 {/* Submit Button */}
                 <Button
                   type="submit"
-                  disabled={isLoading || backendStatus !== 'connected'}
+                  disabled={isLoading}
                   className="w-full h-12 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-white font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg btn-3d-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? (

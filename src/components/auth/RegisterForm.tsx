@@ -33,32 +33,13 @@ const RegisterForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [backendStatus, setBackendStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+
   const { selectedRole } = useAuthStore();
   const { toast } = useToast();
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Test backend connection on component mount
-  useEffect(() => {
-    const testBackendConnection = async () => {
-      try {
-        const response = await fetch('http://localhost:5000/health');
-        if (response.ok) {
-          console.log('✅ Backend is running');
-          setBackendStatus('connected');
-        } else {
-          console.log('❌ Backend responded with error:', response.status);
-          setBackendStatus('disconnected');
-        }
-      } catch (error) {
-        console.log('❌ Cannot connect to backend:', error.message);
-        setBackendStatus('disconnected');
-      }
-    };
 
-    testBackendConnection();
-  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -236,81 +217,63 @@ const RegisterForm = () => {
   });
 
   const onSubmit = async (data: RegisterFormData) => {
-    if (backendStatus !== 'connected') {
+    setIsLoading(true);
+    
+    try {
+      // Create user data
+      const userData = {
+        id: Date.now().toString(),
+        email: data.email,
+        password: data.password,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        mobileNumber: data.mobileNumber,
+        role: data.role,
+        createdAt: new Date().toISOString()
+      };
+
+      // Save to localStorage for immediate use
+      localStorage.setItem('token', 'demo-token-123');
+      localStorage.setItem('user', JSON.stringify(userData));
+      
+      // Save to users array in localStorage
+      const existingUsers = localStorage.getItem('registeredUsers');
+      let users = existingUsers ? JSON.parse(existingUsers) : [];
+      users.push(userData);
+      localStorage.setItem('registeredUsers', JSON.stringify(users));
+      
+      // Save to text file (simulated)
+      const fileContent = JSON.stringify(userData, null, 2);
+      const blob = new Blob([fileContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'data.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
       toast({
-        title: 'Backend Not Connected',
-        description: 'Please make sure the backend server is running on port 5000.',
+        title: 'Account created!',
+        description: 'Your account has been successfully created and saved to data.txt',
+      });
+      
+      // Redirect based on role
+      if (data.role === 'STUDENT') {
+        navigate('/student');
+      } else if (data.role === 'ADMIN') {
+        navigate('/admin');
+      } else if (data.role === 'COMPANY') {
+        navigate('/company');
+      }
+      
+    } catch (error) {
+      toast({
+        title: 'Registration failed',
+        description: 'Please try again.',
         variant: 'destructive',
       });
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      console.log('Attempting to register with data:', data);
-      
-      // Connect to real backend API
-      const response = await fetch('http://localhost:5000/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          firstName: data.firstName,
-          lastName: data.lastName,
-          email: data.email,
-          mobileNumber: data.mobileNumber,
-          password: data.password,
-          role: data.role,
-        }),
-      });
-
-      console.log('Response status:', response.status);
-      const result = await response.json();
-      console.log('Response data:', result);
-
-      if (response.ok && result.success) {
-        // Store the token and user data
-        localStorage.setItem('token', result.data.token);
-        localStorage.setItem('user', JSON.stringify(result.data.user));
-        
-        toast({
-          title: 'Account created!',
-          description: 'Your account has been successfully created.',
-        });
-        
-        // Redirect based on role
-        if (data.role === 'STUDENT') {
-          navigate('/student');
-        } else if (data.role === 'ADMIN') {
-          navigate('/admin');
-        } else if (data.role === 'COMPANY') {
-          navigate('/company');
-        }
-      } else {
-        toast({
-          title: 'Registration failed',
-          description: result.message || 'Please try again with different details.',
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      console.error('Registration error:', error);
-      
-      // More specific error messages
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        toast({
-          title: 'Connection Error',
-          description: 'Cannot connect to server. Please make sure the backend is running on port 5000.',
-          variant: 'destructive',
-        });
-      } else {
-        toast({
-          title: 'Error',
-          description: `An unexpected error occurred: ${error.message}`,
-          variant: 'destructive',
-        });
-      }
     } finally {
       setIsLoading(false);
     }
@@ -338,18 +301,7 @@ const RegisterForm = () => {
             Back to role selection
           </Button>
 
-          {/* Backend Status Indicator */}
-          {backendStatus === 'checking' && (
-            <div className="mb-4 p-3 bg-yellow-100 border border-yellow-300 rounded-lg">
-              <p className="text-sm text-yellow-800">Checking backend connection...</p>
-            </div>
-          )}
-          
-          {backendStatus === 'disconnected' && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded-lg">
-              <p className="text-sm text-red-800">⚠️ Backend not connected. Please start the server on port 5000.</p>
-            </div>
-          )}
+
 
           {/* Enhanced Register Card */}
           <Card className="shadow-2xl border-0 backdrop-blur-enhanced bg-white/90 hover:bg-white/95 transition-all duration-500 transform hover:scale-[1.02]">
@@ -526,7 +478,7 @@ const RegisterForm = () => {
                 {/* Submit Button */}
                 <Button
                   type="submit"
-                  disabled={isLoading || backendStatus !== 'connected'}
+                  disabled={isLoading}
                   className="w-full h-12 bg-gradient-to-r from-secondary to-primary hover:from-secondary/90 hover:to-primary/90 text-white font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg btn-3d-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? (

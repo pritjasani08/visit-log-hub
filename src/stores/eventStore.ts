@@ -33,6 +33,8 @@ const mockVisits: IndustrialVisit[] = [
     purpose: 'Software Development Internship',
     startTime: new Date(Date.now() + 1000 * 60 * 30).toISOString(), // 30 minutes from now
     endTime: new Date(Date.now() + 1000 * 60 * 60 * 3).toISOString(), // 3 hours from now
+    location: 'San Francisco, CA',
+    companyAddress: '123 Tech Street, San Francisco, CA 94105',
     qrCode: 'qr-techcorp-123',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -48,6 +50,8 @@ const mockVisits: IndustrialVisit[] = [
     purpose: 'Manufacturing Process Study',
     startTime: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(), // Tomorrow
     endTime: new Date(Date.now() + 1000 * 60 * 60 * 28).toISOString(), // Tomorrow + 4 hours
+    location: 'New York, NY',
+    companyAddress: '456 Industry Ave, New York, NY 10001',
     qrCode: 'qr-industrial-456',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

@@ -14,6 +14,8 @@ interface AuthState {
   logout: () => void;
   setSelectedRole: (role: Role) => void;
   clearStorage: () => void;
+  restoreUser: () => boolean;
+  getCurrentUser: () => User | null;
 }
 
 // Mock user data
@@ -125,10 +127,56 @@ export const useAuthStore = create<AuthState>()(
           selectedRole: null,
         }));
       },
+
+      // Restore user from localStorage if available
+      restoreUser: () => {
+        const storedUser = localStorage.getItem('user');
+        const storedToken = localStorage.getItem('token');
+        
+        if (storedUser && storedToken) {
+          try {
+            const user = JSON.parse(storedUser);
+            set((state) => ({
+              ...state,
+              user,
+              isAuthenticated: true,
+              token: storedToken,
+              selectedRole: user.role,
+            }));
+            return true;
+          } catch (error) {
+            console.error('Error restoring user from localStorage:', error);
+            return false;
+          }
+        }
+        return false;
+      },
+
+      // Get current user (with fallback to localStorage)
+      getCurrentUser: () => {
+        const state = get();
+        if (state.user) return state.user;
+        
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          try {
+            return JSON.parse(storedUser);
+          } catch (error) {
+            console.error('Error parsing stored user:', error);
+            return null;
+          }
+        }
+        return null;
+      },
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({ selectedRole: state.selectedRole }),
+      partialize: (state) => ({ 
+        user: state.user, 
+        isAuthenticated: state.isAuthenticated, 
+        token: state.token,
+        selectedRole: state.selectedRole 
+      }),
     }
   )
 );

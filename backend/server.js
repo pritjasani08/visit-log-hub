@@ -10,15 +10,15 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 console.log('Environment variables loaded:');
 console.log('NODE_ENV:', process.env.NODE_ENV);
 console.log('PORT:', process.env.PORT);
-console.log('MONGODB_URI:', process.env.MONGODB_URI);
+console.log('SUPABASE_URL:', process.env.SUPABASE_URL);
 
-const connectDB = require('./config/database');
-const authRoutes = require('./routes/auth');
+const { connectDB } = require('./config/supabase');
+const authRoutes = require('./routes/auth-supabase');
 const visitRoutes = require('./routes/visits');
 const qrDemoRoutes = require('./routes/qrDemo');
 
 const app = express();
-const PORT = process.env.PORT || 8085;
+const PORT = process.env.PORT || 50
 
 // Security middleware
 app.use(helmet());

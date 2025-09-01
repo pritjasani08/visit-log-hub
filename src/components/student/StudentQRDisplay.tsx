@@ -55,7 +55,7 @@ const StudentQRDisplay = () => {
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       setUniqueCode(code);
       
-      // Create QR data with student information
+      // Create QR data with student information and location
       const qrData = {
         visitId: visitData.id,
         studentId: visitData.studentId,
@@ -64,6 +64,10 @@ const StudentQRDisplay = () => {
         companyName: visitData.companyName,
         visitDate: visitData.visitDate,
         purpose: visitData.purpose,
+        location: visitData.location || 'Location not specified',
+        companyAddress: visitData.companyAddress || 'Address not specified',
+        startTime: visitData.startTime,
+        endTime: visitData.endTime,
         uniqueCode: code,
         timestamp: new Date().toISOString(),
       };
@@ -117,15 +121,25 @@ const StudentQRDisplay = () => {
     pdf.text(`Company: ${visit.companyName}`, 20, 40);
     pdf.text(`Date: ${visit.visitDate}`, 20, 50);
     pdf.text(`Purpose: ${visit.purpose}`, 20, 60);
-    pdf.text(`Student: ${user?.firstName} ${user?.lastName}`, 20, 70);
-    pdf.text(`Unique Code: ${uniqueCode}`, 20, 80);
-    
-    // Add QR code image
-    pdf.addImage(qrCodeDataUrl, 'JPEG', 70, 90, 70, 70);
-    
-    // Add unique code below QR
-    pdf.setFontSize(16);
-    pdf.text(`Unique Code: ${uniqueCode}`, 105, 170, { align: 'center' });
+    pdf.text(`Location: ${visit.location || 'Location not specified'}`, 20, 70);
+    if (visit.companyAddress) {
+      pdf.text(`Address: ${visit.companyAddress}`, 20, 80);
+      pdf.text(`Student: ${user?.firstName} ${user?.lastName}`, 20, 90);
+      pdf.text(`Unique Code: ${uniqueCode}`, 20, 100);
+      // Add QR code image
+      pdf.addImage(qrCodeDataUrl, 'JPEG', 70, 110, 70, 70);
+      // Add unique code below QR
+      pdf.setFontSize(16);
+      pdf.text(`Unique Code: ${uniqueCode}`, 105, 190, { align: 'center' });
+    } else {
+      pdf.text(`Student: ${user?.firstName} ${user?.lastName}`, 20, 80);
+      pdf.text(`Unique Code: ${uniqueCode}`, 20, 90);
+      // Add QR code image
+      pdf.addImage(qrCodeDataUrl, 'JPEG', 70, 100, 70, 70);
+      // Add unique code below QR
+      pdf.setFontSize(16);
+      pdf.text(`Unique Code: ${uniqueCode}`, 105, 180, { align: 'center' });
+    }
     
     pdf.save(`visit-qr-${visit.companyName}-${uniqueCode}.pdf`);
     
@@ -252,6 +266,24 @@ const StudentQRDisplay = () => {
                     <p className="text-sm text-muted-foreground mt-1">{visit?.purpose}</p>
                   </div>
                 </div>
+                
+                <div className="flex items-start gap-2">
+                  <Building className="h-4 w-4 text-muted-foreground mt-1" />
+                  <div>
+                    <span className="font-medium">Location:</span>
+                    <p className="text-sm text-muted-foreground mt-1">{visit?.location || 'Location not specified'}</p>
+                  </div>
+                </div>
+                
+                {visit?.companyAddress && (
+                  <div className="flex items-start gap-2">
+                    <Building className="h-4 w-4 text-muted-foreground mt-1" />
+                    <div>
+                      <span className="font-medium">Address:</span>
+                      <p className="text-sm text-muted-foreground mt-1">{visit.companyAddress}</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Instructions */}
